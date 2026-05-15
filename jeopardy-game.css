@@ -456,6 +456,18 @@ dialog::backdrop {
   font-weight: 800;
 }
 
+.modal-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+.modal-title-row .close-button {
+  flex: 0 0 auto;
+}
+
 .team-fields {
   display: grid;
   gap: 12px;

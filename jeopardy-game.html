@@ -185,15 +185,15 @@
 
     <dialog class="setup-dialog" id="rulesDialog" aria-labelledby="rulesTitle">
       <section class="setup-panel">
-        <div>
+        <div class="modal-title-row">
+          <div>
           <p class="eyebrow">How to Play</p>
           <h2 id="rulesTitle">Classic Jeopardy Format</h2>
+          </div>
+          <button class="icon-button close-button" type="button" id="closeRulesButton" title="Close rules" aria-label="Close rules">x</button>
+        </div>
           <p class="theme-lens" id="rulesThemeLens"></p>
-        </div>
         <ol class="rules-list" id="rulesList"></ol>
-        <div class="dialog-actions">
-          <button class="primary-button" type="button" id="closeRulesButton">Go to Game Board</button>
-        </div>
       </section>
     </dialog>
 
