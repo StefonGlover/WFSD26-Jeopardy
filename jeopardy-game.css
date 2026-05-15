@@ -58,7 +58,7 @@ body.presenter-mode .header-actions {
   margin: 0 auto;
   padding: 20px 0 28px;
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto auto 1fr auto;
   gap: 14px;
 }
 
@@ -242,6 +242,49 @@ body.presenter-mode .header-actions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 10px;
+}
+
+.board-status-strip {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgba(255, 209, 92, 0.3);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(255, 209, 92, 0.14), transparent 46%),
+    rgba(0, 0, 0, 0.54);
+  box-shadow: inset 0 0 0 1px rgba(255, 209, 92, 0.06);
+  padding: 10px 16px;
+}
+
+.board-status-strip[data-status-state="board-complete"],
+.board-status-strip[data-status-state="final-complete"] {
+  border-color: rgba(255, 209, 92, 0.56);
+  background:
+    linear-gradient(90deg, rgba(244, 0, 0, 0.24), rgba(255, 209, 92, 0.15)),
+    rgba(0, 0, 0, 0.62);
+}
+
+.board-status-strip[data-status-state="notice"] {
+  border-color: rgba(255, 255, 255, 0.28);
+}
+
+.status-kicker {
+  flex: 0 0 auto;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.board-status-strip p {
+  margin: 0;
+  color: var(--white);
+  font-size: clamp(17px, 1.7vw, 26px);
+  font-weight: 900;
+  text-align: right;
 }
 
 .team-card {
@@ -1155,6 +1198,39 @@ dialog::backdrop {
   padding-top: 14px;
 }
 
+.host-controls [data-control] {
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease, background 0.18s ease;
+}
+
+.clue-panel[data-clue-stage="clue"] [data-control="timer"],
+.clue-panel[data-clue-stage="clue"] [data-control="reveal"],
+.clue-panel[data-clue-stage="response"] [data-control="score"],
+.clue-panel[data-clue-stage="steal"] [data-control="team"],
+.clue-panel[data-clue-stage="steal"] [data-control="score"],
+.clue-panel[data-clue-stage="steal"] [data-control="close"],
+.clue-panel[data-clue-stage="closed"] [data-control="back"] {
+  border-color: rgba(255, 209, 92, 0.72);
+  box-shadow: 0 0 0 3px rgba(255, 209, 92, 0.12);
+}
+
+.clue-panel[data-clue-stage="steal"] [data-control="team"] {
+  background-color: rgba(255, 209, 92, 0.12);
+}
+
+.clue-panel[data-clue-stage="steal"] #noScoreButton,
+.clue-panel[data-clue-stage="closed"] #backButton {
+  background: var(--coke-red);
+  border-color: var(--coke-red);
+  color: var(--white);
+}
+
+.clue-panel[data-clue-stage="closed"] [data-control="timer"],
+.clue-panel[data-clue-stage="closed"] [data-control="reveal"],
+.clue-panel[data-clue-stage="closed"] [data-control="score"],
+.clue-panel[data-clue-stage="closed"] [data-control="close"] {
+  opacity: 0.46;
+}
+
 .timer-button,
 .timer-display {
   min-height: 44px;
@@ -1243,6 +1319,12 @@ dialog::backdrop {
   border-color: var(--gold);
 }
 
+.wager-card input:disabled {
+  border-color: rgba(255, 209, 92, 0.34);
+  background: rgba(255, 209, 92, 0.1);
+  color: rgba(255, 255, 255, 0.86);
+}
+
 .wager-actions {
   justify-content: flex-start;
   margin-top: 10px;
@@ -1256,8 +1338,26 @@ dialog::backdrop {
 }
 
 .final-controls {
-  grid-template-columns: repeat(2, auto);
+  grid-template-columns: repeat(3, auto);
   justify-content: end;
+}
+
+.final-panel .pending-final-prompt {
+  color: rgba(255, 255, 255, 0.66);
+  font-size: clamp(26px, 3.2vw, 44px);
+}
+
+.final-panel[data-final-stage="wagers"] #lockWagersButton,
+.final-panel[data-final-stage="prompt"] #revealFinalButton,
+.final-panel[data-final-stage="response"] .wager-card:not(.scored) .score-button,
+.final-panel[data-final-stage="score"] .wager-card:not(.scored) .score-button {
+  box-shadow: 0 0 0 3px rgba(255, 209, 92, 0.14);
+}
+
+.final-panel[data-final-stage="prompt"] .wager-card,
+.final-panel[data-final-stage="response"] .wager-card,
+.final-panel[data-final-stage="score"] .wager-card {
+  border-color: rgba(255, 209, 92, 0.24);
 }
 
 .end-panel {
@@ -1604,6 +1704,11 @@ dialog::backdrop {
     margin-bottom: 5px;
   }
 
+  .board-status-strip {
+    min-height: 46px;
+    padding: 8px 14px;
+  }
+
   .board-wrap {
     padding: 8px;
   }
@@ -1678,6 +1783,15 @@ dialog::backdrop {
 
   .team-card strong {
     font-size: clamp(24px, 2.6vw, 34px);
+  }
+
+  .board-status-strip {
+    min-height: 42px;
+    padding: 7px 12px;
+  }
+
+  .board-status-strip p {
+    font-size: clamp(15px, 1.45vw, 21px);
   }
 
   .board-wrap {
@@ -1809,6 +1923,16 @@ dialog::backdrop {
 
   .scoreboard {
     grid-template-columns: 1fr;
+  }
+
+  .board-status-strip {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .board-status-strip p {
+    text-align: left;
   }
 
   .game-footer,

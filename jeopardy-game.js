@@ -24,6 +24,7 @@ const state = {
   actionHistory: [],
   undoSnapshot: null,
   finalWagers: [],
+  finalWagersLocked: false,
   finalResponseRevealed: false,
   finalScoredTeams: new Set(),
   finalComplete: false
@@ -35,6 +36,8 @@ const gameTheme = document.getElementById("gameTheme");
 const soundButton = document.getElementById("soundButton");
 const scoreboard = document.getElementById("scoreboard");
 const gameBoard = document.getElementById("gameBoard");
+const boardStatusStrip = document.getElementById("boardStatusStrip");
+const boardStatusKicker = document.getElementById("boardStatusKicker");
 const boardStatus = document.getElementById("boardStatus");
 const progressStatus = document.getElementById("progressStatus");
 const undoButton = document.getElementById("undoButton");
@@ -42,6 +45,7 @@ const setupDialog = document.getElementById("setupDialog");
 const setupForm = document.getElementById("setupForm");
 const teamFields = document.getElementById("teamFields");
 const clueDialog = document.getElementById("clueDialog");
+const cluePanel = clueDialog.querySelector(".clue-panel");
 const clueMeta = document.getElementById("clueMeta");
 const clueStage = document.getElementById("clueStage");
 const clueStinger = document.getElementById("clueStinger");
@@ -82,7 +86,9 @@ const finalRiskConcern = document.getElementById("finalRiskConcern");
 const finalRiskAction = document.getElementById("finalRiskAction");
 const wagerGrid = document.getElementById("wagerGrid");
 const finalButton = document.getElementById("finalButton");
+const lockWagersButton = document.getElementById("lockWagersButton");
 const revealFinalButton = document.getElementById("revealFinalButton");
+const finalPanel = finalDialog.querySelector(".final-panel");
 const finalSteps = document.getElementById("finalSteps");
 const endButton = document.getElementById("endButton");
 const hostNotesDialog = document.getElementById("hostNotesDialog");
@@ -147,6 +153,7 @@ function serializeState({ includeTransient = false } = {}) {
     presenterMode: state.presenterMode,
     actionHistory: state.actionHistory.slice(0, 5),
     finalWagers: Array.from({ length: totalTeams }, (_, index) => Number(state.finalWagers[index]) || 0),
+    finalWagersLocked: state.finalWagersLocked,
     finalResponseRevealed: state.finalResponseRevealed,
     finalScoredTeams: [...state.finalScoredTeams],
     finalComplete: state.finalComplete,
@@ -194,6 +201,7 @@ function restoreState(snapshot, { reopenDialogs = false } = {}) {
   state.presenterMode = Boolean(snapshot.presenterMode);
   state.actionHistory = Array.isArray(snapshot.actionHistory) ? snapshot.actionHistory.slice(0, 5) : [];
   state.finalWagers = Array.isArray(snapshot.finalWagers) ? snapshot.finalWagers.slice(0, state.teams.length) : [];
+  state.finalWagersLocked = Boolean(snapshot.finalWagersLocked || snapshot.finalResponseRevealed || snapshot.finalComplete);
   state.finalResponseRevealed = Boolean(snapshot.finalResponseRevealed);
   state.finalScoredTeams = new Set(snapshot.finalScoredTeams || []);
   state.finalComplete = Boolean(snapshot.finalComplete);
@@ -312,7 +320,10 @@ function renderState() {
   updateUndoButton();
   updateBoardStatus();
   if (isDialogOpen(finalDialog)) {
+    renderFinalPrompt();
+    renderWagers();
     renderFinalStage();
+    updateFinalControls();
   }
   if (isDialogOpen(clueDialog) && state.currentClue) {
     renderCurrentClueView();
@@ -346,14 +357,28 @@ function renderGlossary(strip, item) {
 
 function updateBoardStatus(message) {
   let statusText;
+  let statusLabel = "Current Turn";
+  let statusState = "choosing";
   if (message) {
     statusText = message;
+    statusLabel = "Host Status";
+    statusState = "notice";
   } else if (state.finalComplete) {
     statusText = "Final Jeopardy complete. Show results when ready.";
+    statusLabel = "Final Complete";
+    statusState = "final-complete";
   } else if (state.usedClues.size === getTotalClues()) {
     statusText = "Board complete. Open Final Jeopardy.";
+    statusLabel = "Board Complete";
+    statusState = "board-complete";
   } else {
     statusText = `${state.teams[state.activeTeam].name} is choosing.`;
+  }
+  if (boardStatusStrip) {
+    boardStatusStrip.dataset.statusState = statusState;
+  }
+  if (boardStatusKicker) {
+    boardStatusKicker.textContent = statusLabel;
   }
   if (boardStatus) {
     boardStatus.textContent = statusText;
@@ -473,6 +498,29 @@ function isChallengeClue(id) {
 function currentClueScoreValue() {
   if (!state.currentClue) return 0;
   return state.currentClue.clue.value * (state.currentClue.isChallenge ? 2 : 1);
+}
+
+function getClueHostStage() {
+  if (!state.currentClue) return "clue";
+  if (state.currentClue.resolved || state.currentClue.noScore) return "closed";
+  if (state.currentClue.stealOpen) return "steal";
+  if (state.currentClue.revealed) return "response";
+  return "clue";
+}
+
+function updateClueStageUI() {
+  const stage = getClueHostStage();
+  const stageLabels = {
+    clue: "Clue",
+    response: "Response Revealed",
+    steal: "Steal Open",
+    closed: "Clue Closed"
+  };
+  if (cluePanel) {
+    cluePanel.dataset.clueStage = stage;
+  }
+  clueStage.textContent = stageLabels[stage] || "Clue";
+  return stage;
 }
 
 function setChallengeEnabled(enabled) {
@@ -661,7 +709,6 @@ function renderCurrentClueView() {
   if (!state.currentClue) return;
   const { category, clue, isChallenge } = state.currentClue;
   clueMeta.textContent = `${category.name} - ${isChallenge ? clue.value * 2 : clue.value} Points`;
-  clueStage.textContent = state.currentClue.revealed ? "Response Revealed" : "Clue";
   categoryPrompt.hidden = true;
   renderClueStinger(category, isChallenge, false);
   clueText.textContent = clue.clue;
@@ -676,6 +723,7 @@ function renderCurrentClueView() {
   responseBlock.hidden = !state.currentClue.revealed;
   resetTimerDisplay();
   revealButton.disabled = state.currentClue.revealed;
+  updateClueStageUI();
   renderTeamSelect();
   updateScoreButtons();
 }
@@ -716,7 +764,6 @@ function revealClue() {
   stopTimer();
   responseBlock.hidden = false;
   state.currentClue.revealed = true;
-  clueStage.textContent = "Response Revealed";
   revealButton.disabled = true;
   updateScoreButtons();
   correctButton.focus();
@@ -811,7 +858,8 @@ function noScore() {
 }
 
 function updateScoreButtons() {
-  const revealed = revealButton.disabled;
+  const stage = updateClueStageUI();
+  const revealed = Boolean(state.currentClue?.revealed);
   const selectedTeam = Number(modalTeamSelect.value);
   const alreadyScored = state.currentClue?.scoredTeams.has(selectedTeam);
   const noScoreApplied = Boolean(state.currentClue?.noScore);
@@ -820,6 +868,8 @@ function updateScoreButtons() {
   const scoreValue = currentClueScoreValue();
   correctButton.textContent = scoreValue ? `Correct +${scoreValue}` : "Correct +";
   incorrectButton.textContent = scoreValue ? `Incorrect -${scoreValue}` : "Incorrect -";
+  timerButton.disabled = stage !== "clue";
+  revealButton.disabled = stage !== "clue";
   correctButton.disabled = !revealed || alreadyScored || noScoreApplied || resolved;
   incorrectButton.disabled = !revealed || alreadyScored || noScoreApplied || resolved;
   noScoreButton.disabled = !revealed || noScoreApplied || resolved;
@@ -843,6 +893,7 @@ function resetGame() {
   state.actionHistory = [];
   state.undoSnapshot = null;
   state.finalWagers = [];
+  state.finalWagersLocked = false;
   state.finalResponseRevealed = false;
   state.finalScoredTeams.clear();
   state.finalComplete = false;
@@ -875,7 +926,6 @@ function openFinal() {
     return;
   }
   finalCategory.textContent = gameData.finalJeopardy.category;
-  finalClue.textContent = gameData.finalJeopardy.clue;
   finalResponse.textContent = gameData.finalJeopardy.response;
   finalWhy.textContent = gameData.finalJeopardy.why;
   renderGlossary(finalGlossaryStrip, gameData.finalJeopardy);
@@ -884,10 +934,19 @@ function openFinal() {
   finalRiskConcern.textContent = gameData.finalJeopardy.riskCard.risk;
   finalRiskAction.textContent = gameData.finalJeopardy.riskCard.action;
   finalResponseBlock.hidden = !state.finalResponseRevealed;
-  revealFinalButton.disabled = state.finalResponseRevealed;
+  renderFinalPrompt();
   renderWagers();
   renderFinalStage();
+  updateFinalControls();
   showDialog(finalDialog);
+}
+
+function renderFinalPrompt() {
+  const promptIsOpen = state.finalWagersLocked || state.finalResponseRevealed || state.finalComplete;
+  finalClue.textContent = promptIsOpen
+    ? gameData.finalJeopardy.clue
+    : "Lock wagers to reveal the final clue.";
+  finalClue.classList.toggle("pending-final-prompt", !promptIsOpen);
 }
 
 function renderWagers() {
@@ -896,18 +955,19 @@ function renderWagers() {
     const card = document.createElement("article");
     const maxWager = Math.max(0, team.score);
     const isScored = state.finalScoredTeams.has(index);
+    const inputLocked = state.finalWagersLocked || state.finalResponseRevealed || isScored || state.finalComplete;
     const wager = Math.min(maxWager, Math.max(0, Number(state.finalWagers[index]) || 0));
     state.finalWagers[index] = wager;
     card.className = `wager-card${isScored ? " scored" : ""}`;
     card.innerHTML = `
       <label>
         <span>${team.name}</span>
-        <input type="number" min="0" max="${maxWager}" step="100" value="${wager}" data-wager-index="${index}" aria-label="${team.name} wager" ${isScored ? "disabled" : ""}>
+        <input type="number" min="0" max="${maxWager}" step="100" value="${wager}" data-wager-index="${index}" aria-label="${team.name} wager" ${inputLocked ? "disabled" : ""}>
       </label>
       <p class="wager-limit">Max wager: ${formatScore(maxWager)}</p>
       <div class="wager-actions">
-        <button class="score-button positive" type="button" data-final-result="correct" data-team-index="${index}" ${state.finalResponseRevealed && !isScored ? "" : "disabled"}>Correct</button>
-        <button class="score-button negative" type="button" data-final-result="incorrect" data-team-index="${index}" ${state.finalResponseRevealed && !isScored ? "" : "disabled"}>Incorrect</button>
+        <button class="score-button positive" type="button" data-final-result="correct" data-team-index="${index}" ${state.finalResponseRevealed && !isScored && !state.finalComplete ? "" : "disabled"}>Correct</button>
+        <button class="score-button negative" type="button" data-final-result="incorrect" data-team-index="${index}" ${state.finalResponseRevealed && !isScored && !state.finalComplete ? "" : "disabled"}>Incorrect</button>
       </div>
     `;
     wagerGrid.appendChild(card);
@@ -924,6 +984,11 @@ function renderFinalStage() {
     activeStep = "score";
   } else if (state.finalResponseRevealed) {
     activeStep = "response";
+  } else if (state.finalWagersLocked) {
+    activeStep = "prompt";
+  }
+  if (finalPanel) {
+    finalPanel.dataset.finalStage = activeStep;
   }
   const order = ["wagers", "prompt", "response", "score", "results"];
   const activeIndex = order.indexOf(activeStep);
@@ -934,11 +999,39 @@ function renderFinalStage() {
   });
 }
 
+function updateFinalControls() {
+  lockWagersButton.textContent = state.finalWagersLocked ? "Wagers Locked" : "Lock Wagers";
+  lockWagersButton.disabled = state.finalWagersLocked || state.finalResponseRevealed || state.finalComplete;
+  revealFinalButton.disabled = !state.finalWagersLocked || state.finalResponseRevealed || state.finalComplete;
+}
+
+function normalizeFinalWagers() {
+  state.teams.forEach((team, index) => {
+    const maxWager = Math.max(0, team.score);
+    state.finalWagers[index] = Math.min(maxWager, Math.max(0, Number(state.finalWagers[index]) || 0));
+  });
+}
+
+function lockFinalWagers() {
+  if (state.finalWagersLocked || state.finalResponseRevealed || state.finalComplete) return;
+  normalizeFinalWagers();
+  state.finalWagersLocked = true;
+  renderFinalPrompt();
+  renderWagers();
+  renderFinalStage();
+  updateFinalControls();
+  saveState();
+  showToast("Final wagers locked", "neutral");
+  revealFinalButton.focus();
+}
+
 function revealFinal() {
+  if (!state.finalWagersLocked || state.finalResponseRevealed || state.finalComplete) return;
   playSound("reveal");
   finalResponseBlock.hidden = false;
   state.finalResponseRevealed = true;
-  revealFinalButton.disabled = true;
+  renderFinalPrompt();
+  updateFinalControls();
   wagerGrid.querySelectorAll("button").forEach((button) => {
     button.disabled = state.finalScoredTeams.has(Number(button.dataset.teamIndex));
   });
@@ -949,7 +1042,7 @@ function revealFinal() {
 
 function applyFinalScore(button) {
   const teamIndex = Number(button.dataset.teamIndex);
-  if (state.finalScoredTeams.has(teamIndex) || state.finalComplete) return;
+  if (!state.finalWagersLocked || !state.finalResponseRevealed || state.finalScoredTeams.has(teamIndex) || state.finalComplete) return;
   const result = button.dataset.finalResult;
   const input = wagerGrid.querySelector(`[data-wager-index="${teamIndex}"]`);
   const maxWager = Math.max(0, state.teams[teamIndex].score);
@@ -972,6 +1065,7 @@ function applyFinalScore(button) {
   animateScore(teamIndex, multiplier);
   updateBoardStatus();
   renderFinalStage();
+  updateFinalControls();
   recordHistory({
     title: "Final Jeopardy",
     detail: `${state.teams[teamIndex].name} ${formatDelta(delta)}`,
@@ -1285,8 +1379,10 @@ function bindEvents() {
   correctButton.addEventListener("click", () => applyScore(1));
   incorrectButton.addEventListener("click", () => applyScore(-1));
   noScoreButton.addEventListener("click", noScore);
+  lockWagersButton.addEventListener("click", lockFinalWagers);
   revealFinalButton.addEventListener("click", revealFinal);
   wagerGrid.addEventListener("input", (event) => {
+    if (state.finalWagersLocked) return;
     const input = event.target.closest("input[data-wager-index]");
     if (!input) return;
     const teamIndex = Number(input.dataset.wagerIndex);

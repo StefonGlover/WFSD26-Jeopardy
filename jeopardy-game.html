@@ -28,6 +28,11 @@
 
       <section class="scoreboard" id="scoreboard" aria-label="Team scores"></section>
 
+      <section class="board-status-strip" id="boardStatusStrip" data-status-state="choosing" aria-live="polite" aria-atomic="true">
+        <span class="status-kicker" id="boardStatusKicker">Current Turn</span>
+        <p id="boardStatus">Team 1 is choosing.</p>
+      </section>
+
       <section class="board-wrap" aria-label="Game board">
         <div class="board" id="gameBoard"></div>
       </section>
@@ -67,7 +72,7 @@
     </dialog>
 
     <dialog class="clue-dialog" id="clueDialog" aria-labelledby="clueMeta">
-      <section class="clue-panel" aria-live="polite">
+      <section class="clue-panel" data-clue-stage="clue" aria-live="polite">
         <div class="clue-topline">
           <p id="clueMeta">Category - 100 Points</p>
           <button class="icon-button close-button" type="button" id="closeClueButton" title="Back to board" aria-label="Back to board">x</button>
@@ -111,22 +116,22 @@
           </div>
         </div>
         <div class="host-controls">
-          <label for="modalTeamSelect">Scoring team</label>
-          <select id="modalTeamSelect"></select>
-          <button class="timer-button" type="button" id="timerButton">Start 30s</button>
-          <output class="timer-display" id="timerDisplay" aria-live="polite">:30</output>
-          <button class="primary-button" type="button" id="revealButton">Reveal Response</button>
-          <button class="score-button positive" type="button" id="correctButton" disabled>Correct +</button>
-          <button class="score-button negative" type="button" id="incorrectButton" disabled>Incorrect -</button>
-          <button class="text-button" type="button" id="noScoreButton" disabled>No Score</button>
-          <button class="text-button" type="button" id="backButton">Back to Board</button>
+          <label for="modalTeamSelect" data-control="team">Scoring team</label>
+          <select id="modalTeamSelect" data-control="team"></select>
+          <button class="timer-button" type="button" id="timerButton" data-control="timer">Start 30s</button>
+          <output class="timer-display" id="timerDisplay" data-control="timer" aria-live="polite">:30</output>
+          <button class="primary-button" type="button" id="revealButton" data-control="reveal">Reveal Response</button>
+          <button class="score-button positive" type="button" id="correctButton" data-control="score" disabled>Correct +</button>
+          <button class="score-button negative" type="button" id="incorrectButton" data-control="score" disabled>Incorrect -</button>
+          <button class="text-button" type="button" id="noScoreButton" data-control="close" disabled>No Score</button>
+          <button class="text-button" type="button" id="backButton" data-control="back">Back to Board</button>
         </div>
         <p class="host-note" id="hostNote">Teams have about 30 seconds. The host may allow one steal after a miss.</p>
       </section>
     </dialog>
 
     <dialog class="clue-dialog" id="finalDialog" aria-labelledby="finalMeta">
-      <section class="clue-panel final-panel" aria-live="polite">
+      <section class="clue-panel final-panel" data-final-stage="wagers" aria-live="polite">
         <div class="clue-topline">
           <p id="finalMeta">Final Jeopardy - <span id="finalCategory">One Team, One Promise</span></p>
           <button class="icon-button close-button" type="button" id="closeFinalButton" title="Back to board" aria-label="Back to board">x</button>
@@ -169,6 +174,7 @@
           </div>
         </div>
         <div class="host-controls final-controls">
+          <button class="primary-button" type="button" id="lockWagersButton">Lock Wagers</button>
           <button class="primary-button" type="button" id="revealFinalButton">Reveal Final Response</button>
           <button class="text-button" type="button" id="finalBackButton">Back to Board</button>
         </div>
