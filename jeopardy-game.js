@@ -18,16 +18,14 @@ const state = {
   finalComplete: false
 };
 
-const startScreen = document.getElementById("startScreen");
-const startButton = document.getElementById("startButton");
 const gameTitle = document.getElementById("gameTitle");
 const gameSubtitle = document.getElementById("gameSubtitle");
 const gameTheme = document.getElementById("gameTheme");
-const brandFooter = document.getElementById("brandFooter");
 const soundButton = document.getElementById("soundButton");
 const scoreboard = document.getElementById("scoreboard");
 const gameBoard = document.getElementById("gameBoard");
 const boardStatus = document.getElementById("boardStatus");
+const progressStatus = document.getElementById("progressStatus");
 const setupDialog = document.getElementById("setupDialog");
 const setupForm = document.getElementById("setupForm");
 const teamFields = document.getElementById("teamFields");
@@ -39,6 +37,7 @@ const responseBlock = document.getElementById("responseBlock");
 const responseText = document.getElementById("responseText");
 const whyText = document.getElementById("whyText");
 const teachingTag = document.getElementById("teachingTag");
+const glossaryStrip = document.getElementById("glossaryStrip");
 const bridgeText = document.getElementById("bridgeText");
 const riskSignal = document.getElementById("riskSignal");
 const riskConcern = document.getElementById("riskConcern");
@@ -57,6 +56,7 @@ const finalClue = document.getElementById("finalClue");
 const finalResponseBlock = document.getElementById("finalResponseBlock");
 const finalResponse = document.getElementById("finalResponse");
 const finalWhy = document.getElementById("finalWhy");
+const finalGlossaryStrip = document.getElementById("finalGlossaryStrip");
 const finalBridge = document.getElementById("finalBridge");
 const finalRiskSignal = document.getElementById("finalRiskSignal");
 const finalRiskConcern = document.getElementById("finalRiskConcern");
@@ -65,6 +65,7 @@ const wagerGrid = document.getElementById("wagerGrid");
 const revealFinalButton = document.getElementById("revealFinalButton");
 const rulesDialog = document.getElementById("rulesDialog");
 const rulesList = document.getElementById("rulesList");
+const rulesThemeLens = document.getElementById("rulesThemeLens");
 const endDialog = document.getElementById("endDialog");
 const winnerTitle = document.getElementById("winnerTitle");
 const closeoutText = document.getElementById("closeoutText");
@@ -94,8 +95,30 @@ function formatScore(score) {
   return score < 0 ? `-$${Math.abs(score)}` : `$${score}`;
 }
 
+function renderGlossary(strip, item) {
+  const glossary = gameData.themeGlossary;
+  const chips = [
+    { label: "Burden", text: item.riskCard.risk, title: glossary.burden },
+    { label: "Signal", text: item.riskCard.signal, title: glossary.signal },
+    { label: "Solution", text: item.riskCard.action, title: glossary.solution }
+  ];
+  strip.innerHTML = chips
+    .map((chip) => `
+      <article class="glossary-chip" title="${chip.title}">
+        <span>${chip.label}</span>
+        <p>${chip.text}</p>
+      </article>
+    `)
+    .join("");
+}
+
 function updateBoardStatus(message) {
   boardStatus.textContent = message || `${state.teams[state.activeTeam].name} is choosing.`;
+}
+
+function updateProgress() {
+  const totalClues = gameData.categories.reduce((sum, category) => sum + category.clues.length, 0);
+  progressStatus.textContent = `${state.usedClues.size}/${totalClues} clues played`;
 }
 
 function readSoundPreference() {
@@ -234,6 +257,7 @@ function renderBoard() {
       gameBoard.appendChild(tile);
     });
   }
+  updateProgress();
 }
 
 function renderSetupFields() {
@@ -290,6 +314,7 @@ function openClue(categoryIndex, itemIndex) {
   responseText.textContent = clue.response;
   whyText.textContent = clue.why;
   teachingTag.textContent = clue.tag;
+  renderGlossary(glossaryStrip, clue);
   bridgeText.textContent = clue.bridge;
   riskSignal.textContent = clue.riskCard.signal;
   riskConcern.textContent = clue.riskCard.risk;
@@ -313,6 +338,7 @@ function revealClue() {
   clueStage.textContent = "Response Revealed";
   revealButton.disabled = true;
   updateScoreButtons();
+  correctButton.focus();
 }
 
 function markCurrentUsed() {
@@ -393,7 +419,7 @@ function updateScoreButtons() {
 }
 
 function resetGame() {
-  const confirmed = window.confirm("Reset scores and reopen every tile?");
+  const confirmed = window.confirm("Reset scores, used tiles, and Final Jeopardy state?");
   if (!confirmed) return;
   state.teams = state.teams.map((team) => ({ ...team, score: 0 }));
   state.activeTeam = 0;
@@ -407,6 +433,13 @@ function resetGame() {
   updateBoardStatus("Game reset. Choose a team, then choose a clue.");
 }
 
+function nextTeam() {
+  state.activeTeam = (state.activeTeam + 1) % state.teams.length;
+  renderScoreboard();
+  renderTeamSelect();
+  updateBoardStatus();
+}
+
 function openFinal() {
   stopTimer();
   if (state.finalComplete) {
@@ -418,6 +451,7 @@ function openFinal() {
   finalClue.textContent = gameData.finalJeopardy.clue;
   finalResponse.textContent = gameData.finalJeopardy.response;
   finalWhy.textContent = gameData.finalJeopardy.why;
+  renderGlossary(finalGlossaryStrip, gameData.finalJeopardy);
   finalBridge.textContent = gameData.finalJeopardy.bridge;
   finalRiskSignal.textContent = gameData.finalJeopardy.riskCard.signal;
   finalRiskConcern.textContent = gameData.finalJeopardy.riskCard.risk;
@@ -457,6 +491,7 @@ function revealFinal() {
   wagerGrid.querySelectorAll("button").forEach((button) => {
     button.disabled = state.finalScoredTeams.has(Number(button.dataset.teamIndex));
   });
+  wagerGrid.querySelector("button:not(:disabled)")?.focus();
 }
 
 function applyFinalScore(button) {
@@ -489,6 +524,7 @@ function applyFinalScore(button) {
 }
 
 function renderRules() {
+  rulesThemeLens.textContent = gameData.themeLens;
   rulesList.innerHTML = gameData.rules.map((rule) => `<li>${rule}</li>`).join("");
 }
 
@@ -541,16 +577,12 @@ function renderEndScreen() {
 }
 
 function bindEvents() {
-  startButton.addEventListener("click", () => {
-    startScreen.hidden = true;
-    updateBoardStatus();
-    gameBoard.querySelector("button:not(:disabled)")?.focus();
-  });
   soundButton.addEventListener("click", toggleSound);
   document.getElementById("setupButton").addEventListener("click", openSetup);
   document.getElementById("rulesButton").addEventListener("click", () => showDialog(rulesDialog));
   document.getElementById("closeRulesButton").addEventListener("click", () => closeDialog(rulesDialog));
   document.getElementById("resetButton").addEventListener("click", resetGame);
+  document.getElementById("nextTeamButton").addEventListener("click", nextTeam);
   document.getElementById("finalButton").addEventListener("click", openFinal);
   document.getElementById("endButton").addEventListener("click", () => {
     renderEndScreen();
@@ -558,6 +590,11 @@ function bindEvents() {
   });
   document.getElementById("closeClueButton").addEventListener("click", () => closeDialog(clueDialog));
   document.getElementById("backButton").addEventListener("click", () => closeDialog(clueDialog));
+  clueDialog.addEventListener("cancel", (event) => {
+    if (state.currentClue?.stealOpen && !state.currentClue.resolved) {
+      event.preventDefault();
+    }
+  });
   document.getElementById("closeFinalButton").addEventListener("click", () => closeDialog(finalDialog));
   document.getElementById("finalBackButton").addEventListener("click", () => closeDialog(finalDialog));
   document.getElementById("closeEndButton").addEventListener("click", () => closeDialog(endDialog));
@@ -600,11 +637,11 @@ function init() {
   gameTitle.textContent = gameData.title;
   gameSubtitle.textContent = gameData.subtitle;
   gameTheme.textContent = gameData.theme;
-  brandFooter.textContent = gameData.brands;
   renderRules();
   renderScoreboard();
   renderTeamSelect();
   renderBoard();
+  updateBoardStatus();
   bindEvents();
 }
 

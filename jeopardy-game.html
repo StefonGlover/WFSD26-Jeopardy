@@ -8,17 +8,6 @@
     <link rel="stylesheet" href="jeopardy-game.css">
   </head>
   <body>
-    <section class="start-screen" id="startScreen" aria-labelledby="startTitle">
-      <div class="start-ribbon" aria-hidden="true"></div>
-      <div class="start-content">
-        <img class="start-logo" src="assets/generated/coca-cola-logo.svg" alt="Coca-Cola">
-        <p class="eyebrow">World Food Safety Day 2026</p>
-        <h1 id="startTitle">Safe Food Everywhere Jeopardy</h1>
-        <p>From burden to solutions - safe food everywhere.</p>
-        <button class="start-button" type="button" id="startButton">Start Game</button>
-      </div>
-    </section>
-
     <main class="game-shell">
       <header class="game-header">
         <div class="brand-lockup logo-lockup" aria-label="Coca-Cola">
@@ -27,7 +16,7 @@
         <div class="title-block">
           <p class="eyebrow" id="gameSubtitle">World Food Safety Day 2026</p>
           <h1 id="gameTitle">Safe Food Everywhere Jeopardy</h1>
-          <p id="gameTheme">From Burden to Solutions - Safe Food Everywhere</p>
+          <p id="gameTheme">From burden to solutions – safe food everywhere</p>
         </div>
         <div class="header-actions">
           <button class="icon-button" type="button" id="rulesButton" title="Show rules" aria-label="Show rules">?</button>
@@ -44,18 +33,23 @@
       </section>
 
       <footer class="game-footer">
-        <button class="final-button" type="button" id="finalButton">Final Jeopardy</button>
-        <button class="text-button" type="button" id="endButton">End Game</button>
-        <p id="boardStatus">Choose a team, then choose a clue.</p>
-        <p class="brand-footer" id="brandFooter"></p>
+        <div class="footer-status">
+          <p id="boardStatus">Choose a team, then choose a clue.</p>
+          <p class="progress-status" id="progressStatus">0/25 clues played</p>
+        </div>
+        <div class="footer-actions">
+          <button class="text-button" type="button" id="nextTeamButton">Next Team</button>
+          <button class="final-button" type="button" id="finalButton">Final Jeopardy</button>
+          <button class="text-button" type="button" id="endButton">Show Winner</button>
+        </div>
       </footer>
     </main>
 
-    <dialog class="setup-dialog" id="setupDialog">
+    <dialog class="setup-dialog" id="setupDialog" aria-labelledby="setupTitle">
       <form method="dialog" class="setup-panel" id="setupForm">
         <div>
           <p class="eyebrow">Team Setup</p>
-          <h2>Build Teams</h2>
+          <h2 id="setupTitle">Build Teams</h2>
           <p>Use two to five teams. Names can be changed anytime before or during play.</p>
         </div>
         <div class="team-fields" id="teamFields"></div>
@@ -67,7 +61,7 @@
       </form>
     </dialog>
 
-    <dialog class="clue-dialog" id="clueDialog">
+    <dialog class="clue-dialog" id="clueDialog" aria-labelledby="clueMeta">
       <section class="clue-panel" aria-live="polite">
         <div class="clue-topline">
           <p id="clueMeta">Category - 100 Points</p>
@@ -84,6 +78,7 @@
             <h3 id="responseText"></h3>
             <p class="why-title">Why It Matters</p>
             <p id="whyText"></p>
+            <div class="glossary-strip" id="glossaryStrip" aria-label="World Food Safety Day theme glossary"></div>
             <div class="bridge-strip">
               <span>Burden to Solution</span>
               <p id="bridgeText"></p>
@@ -119,10 +114,10 @@
       </section>
     </dialog>
 
-    <dialog class="clue-dialog" id="finalDialog">
+    <dialog class="clue-dialog" id="finalDialog" aria-labelledby="finalMeta">
       <section class="clue-panel final-panel" aria-live="polite">
         <div class="clue-topline">
-          <p>Final Jeopardy - <span id="finalCategory">One Team, One Promise</span></p>
+          <p id="finalMeta">Final Jeopardy - <span id="finalCategory">One Team, One Promise</span></p>
           <button class="icon-button close-button" type="button" id="closeFinalButton" title="Back to board" aria-label="Back to board">x</button>
         </div>
         <div class="clue-card">
@@ -134,6 +129,7 @@
             <h3 id="finalResponse"></h3>
             <p class="why-title">Why It Matters</p>
             <p id="finalWhy"></p>
+            <div class="glossary-strip" id="finalGlossaryStrip" aria-label="Final World Food Safety Day theme glossary"></div>
             <div class="bridge-strip">
               <span>Burden to Solution</span>
               <p id="finalBridge"></p>
@@ -161,11 +157,12 @@
       </section>
     </dialog>
 
-    <dialog class="setup-dialog" id="rulesDialog">
+    <dialog class="setup-dialog" id="rulesDialog" aria-labelledby="rulesTitle">
       <section class="setup-panel">
         <div>
           <p class="eyebrow">How to Play</p>
-          <h2>Classic Jeopardy Format</h2>
+          <h2 id="rulesTitle">Classic Jeopardy Format</h2>
+          <p class="theme-lens" id="rulesThemeLens"></p>
         </div>
         <ol class="rules-list" id="rulesList"></ol>
         <div class="dialog-actions">
@@ -174,7 +171,7 @@
       </section>
     </dialog>
 
-    <dialog class="setup-dialog" id="endDialog">
+    <dialog class="setup-dialog" id="endDialog" aria-labelledby="winnerTitle">
       <section class="setup-panel end-panel">
         <div>
           <p class="eyebrow">Game Complete</p>
