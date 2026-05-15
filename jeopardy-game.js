@@ -1,6 +1,8 @@
 const gameData = window.JeopardyData;
 const SOUND_STORAGE_KEY = "jeopardy-sound-muted";
+const GAME_STATE_STORAGE_KEY = "wfsd-jeopardy-game-state-v1";
 const dialogReturnFocus = new WeakMap();
+let toastTimer = null;
 
 const state = {
   teams: [
@@ -18,6 +20,11 @@ const state = {
   seenCategoryPrompts: new Set(),
   challengeEnabled: true,
   challengeClueId: null,
+  presenterMode: false,
+  actionHistory: [],
+  undoSnapshot: null,
+  finalWagers: [],
+  finalResponseRevealed: false,
   finalScoredTeams: new Set(),
   finalComplete: false
 };
@@ -30,9 +37,7 @@ const scoreboard = document.getElementById("scoreboard");
 const gameBoard = document.getElementById("gameBoard");
 const boardStatus = document.getElementById("boardStatus");
 const progressStatus = document.getElementById("progressStatus");
-const journeyFill = document.getElementById("journeyFill");
-const journeyStages = document.getElementById("journeyStages");
-const journeyMeter = document.querySelector(".journey-meter");
+const undoButton = document.getElementById("undoButton");
 const setupDialog = document.getElementById("setupDialog");
 const setupForm = document.getElementById("setupForm");
 const teamFields = document.getElementById("teamFields");
@@ -78,10 +83,13 @@ const finalRiskAction = document.getElementById("finalRiskAction");
 const wagerGrid = document.getElementById("wagerGrid");
 const finalButton = document.getElementById("finalButton");
 const revealFinalButton = document.getElementById("revealFinalButton");
+const finalSteps = document.getElementById("finalSteps");
 const endButton = document.getElementById("endButton");
 const hostNotesDialog = document.getElementById("hostNotesDialog");
 const hostScriptList = document.getElementById("hostScriptList");
+const recentPlayList = document.getElementById("recentPlayList");
 const shortcutList = document.getElementById("shortcutList");
+const presenterToggle = document.getElementById("presenterToggle");
 const challengeToggle = document.getElementById("challengeToggle");
 const challengeToggleLabel = document.getElementById("challengeToggleLabel");
 const challengeToggleDescription = document.getElementById("challengeToggleDescription");
@@ -95,6 +103,7 @@ const closeoutText = document.getElementById("closeoutText");
 const finalScoreList = document.getElementById("finalScoreList");
 const pledgeCard = document.getElementById("pledgeCard");
 const debriefTakeaways = document.getElementById("debriefTakeaways");
+const scoreToast = document.getElementById("scoreToast");
 
 function clueId(categoryIndex, clueIndex) {
   return `${categoryIndex}-${clueIndex}`;
@@ -102,6 +111,126 @@ function clueId(categoryIndex, clueIndex) {
 
 function getTotalClues() {
   return gameData.categories.reduce((sum, category) => sum + category.clues.length, 0);
+}
+
+function getClueById(id) {
+  const [categoryIndex, clueIndex] = String(id).split("-").map(Number);
+  const category = gameData.categories[categoryIndex];
+  const clue = category?.clues?.[clueIndex];
+  if (!category || !clue) return null;
+  return { categoryIndex, clueIndex, category, clue };
+}
+
+function serializeCurrentClue() {
+  if (!state.currentClue) return null;
+  return {
+    id: state.currentClue.id,
+    isChallenge: Boolean(state.currentClue.isChallenge),
+    scoredTeams: [...state.currentClue.scoredTeams],
+    noScore: Boolean(state.currentClue.noScore),
+    stealOpen: Boolean(state.currentClue.stealOpen),
+    resolved: Boolean(state.currentClue.resolved),
+    revealed: Boolean(state.currentClue.revealed)
+  };
+}
+
+function serializeState({ includeTransient = false } = {}) {
+  const totalTeams = state.teams.length;
+  return {
+    version: 1,
+    teams: state.teams.map((team) => ({ name: team.name, score: team.score })),
+    activeTeam: state.activeTeam,
+    usedClues: [...state.usedClues],
+    seenCategoryPrompts: [...state.seenCategoryPrompts],
+    challengeEnabled: state.challengeEnabled,
+    challengeClueId: state.challengeClueId,
+    presenterMode: state.presenterMode,
+    actionHistory: state.actionHistory.slice(0, 5),
+    finalWagers: Array.from({ length: totalTeams }, (_, index) => Number(state.finalWagers[index]) || 0),
+    finalResponseRevealed: state.finalResponseRevealed,
+    finalScoredTeams: [...state.finalScoredTeams],
+    finalComplete: state.finalComplete,
+    currentClue: includeTransient ? serializeCurrentClue() : null,
+    openDialog: includeTransient ? getOpenDialogName() : null
+  };
+}
+
+function restoreCurrentClue(savedClue) {
+  if (!savedClue?.id) {
+    state.currentClue = null;
+    return;
+  }
+  const clueInfo = getClueById(savedClue.id);
+  if (!clueInfo) {
+    state.currentClue = null;
+    return;
+  }
+  state.currentClue = {
+    id: savedClue.id,
+    category: clueInfo.category,
+    clue: clueInfo.clue,
+    isChallenge: Boolean(savedClue.isChallenge),
+    scoredTeams: new Set(savedClue.scoredTeams || []),
+    noScore: Boolean(savedClue.noScore),
+    stealOpen: Boolean(savedClue.stealOpen),
+    resolved: Boolean(savedClue.resolved),
+    revealed: Boolean(savedClue.revealed)
+  };
+}
+
+function restoreState(snapshot, { reopenDialogs = false } = {}) {
+  if (!snapshot) return false;
+  state.teams = Array.isArray(snapshot.teams) && snapshot.teams.length
+    ? snapshot.teams.map((team, index) => ({
+      name: team.name || `Team ${index + 1}`,
+      score: Number(team.score) || 0
+    }))
+    : state.teams;
+  state.activeTeam = Math.min(Math.max(0, Number(snapshot.activeTeam) || 0), state.teams.length - 1);
+  state.usedClues = new Set(snapshot.usedClues || []);
+  state.seenCategoryPrompts = new Set(snapshot.seenCategoryPrompts || []);
+  state.challengeEnabled = snapshot.challengeEnabled !== false;
+  state.challengeClueId = snapshot.challengeClueId || null;
+  state.presenterMode = Boolean(snapshot.presenterMode);
+  state.actionHistory = Array.isArray(snapshot.actionHistory) ? snapshot.actionHistory.slice(0, 5) : [];
+  state.finalWagers = Array.isArray(snapshot.finalWagers) ? snapshot.finalWagers.slice(0, state.teams.length) : [];
+  state.finalResponseRevealed = Boolean(snapshot.finalResponseRevealed);
+  state.finalScoredTeams = new Set(snapshot.finalScoredTeams || []);
+  state.finalComplete = Boolean(snapshot.finalComplete);
+  restoreCurrentClue(snapshot.currentClue);
+  renderState();
+  if (reopenDialogs) {
+    restoreOpenDialog(snapshot.openDialog);
+  }
+  return true;
+}
+
+function saveState() {
+  try {
+    window.localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(serializeState()));
+  } catch (error) {
+    // Local persistence is helpful but not required for the live game to run.
+  }
+}
+
+function loadState() {
+  try {
+    const rawState = window.localStorage.getItem(GAME_STATE_STORAGE_KEY);
+    if (!rawState) return false;
+    const savedState = JSON.parse(rawState);
+    if (savedState?.version !== 1) return false;
+    return restoreState(savedState);
+  } catch (error) {
+    return false;
+  }
+}
+
+function clearSavedState() {
+  try {
+    window.localStorage.removeItem(GAME_STATE_STORAGE_KEY);
+  } catch (error) {
+    // Nothing to clear if storage is unavailable.
+  }
 }
 
 function rememberDialogFocus(dialog, returnFocusElement = document.activeElement) {
@@ -140,8 +269,62 @@ function closeDialog(dialog) {
   restoreDialogFocus(dialog);
 }
 
+function getOpenDialogName() {
+  if (isDialogOpen(clueDialog)) return "clue";
+  if (isDialogOpen(finalDialog)) return "final";
+  if (isDialogOpen(endDialog)) return "end";
+  return null;
+}
+
+function closeGameDialogs() {
+  [clueDialog, finalDialog, endDialog].forEach((dialog) => {
+    if (isDialogOpen(dialog)) {
+      closeDialog(dialog);
+    }
+  });
+}
+
+function restoreOpenDialog(dialogName) {
+  closeGameDialogs();
+  if (dialogName === "clue" && state.currentClue) {
+    renderCurrentClueView();
+    showDialog(clueDialog);
+    return;
+  }
+  if (dialogName === "final") {
+    openFinal();
+    return;
+  }
+  if (dialogName === "end") {
+    renderEndScreen();
+    showDialog(endDialog);
+  }
+}
+
+function renderState() {
+  stopTimer();
+  updateFinalButton();
+  applyPresenterMode();
+  renderScoreboard();
+  renderTeamSelect();
+  renderBoard();
+  renderHostNotes();
+  updateUndoButton();
+  updateBoardStatus();
+  if (isDialogOpen(finalDialog)) {
+    renderFinalStage();
+  }
+  if (isDialogOpen(clueDialog) && state.currentClue) {
+    renderCurrentClueView();
+  }
+}
+
 function formatScore(score) {
   return score < 0 ? `-$${Math.abs(score)}` : `$${score}`;
+}
+
+function formatDelta(delta) {
+  return delta > 0 ? `+${delta}` : `${delta}`;
 }
 
 function renderGlossary(strip, item) {
@@ -180,9 +363,14 @@ function updateBoardStatus(message) {
 
 function updateProgress() {
   const totalClues = getTotalClues();
+  const progressRatio = totalClues ? state.usedClues.size / totalClues : 0;
+  const stage = getCurrentJourneyStage(progressRatio);
   progressStatus.textContent = `${state.usedClues.size}/${totalClues}`;
-  progressStatus.setAttribute("aria-label", `${state.usedClues.size} of ${totalClues} clues played`);
-  renderJourneyMeter();
+  progressStatus.style.setProperty("--progress-percent", `${Math.round(progressRatio * 100)}%`);
+  progressStatus.setAttribute(
+    "aria-label",
+    `${state.usedClues.size} of ${totalClues} clues played. Current journey stage: ${stage}.`
+  );
 }
 
 function updateFinalButton() {
@@ -191,14 +379,67 @@ function updateFinalButton() {
   endButton.textContent = state.finalComplete ? "Results" : "Show Winner";
 }
 
-function renderJourneyMeter() {
+function updateUndoButton() {
+  undoButton.disabled = !state.undoSnapshot;
+  undoButton.title = state.undoSnapshot ? `Undo ${state.undoSnapshot.label}` : "Nothing to undo";
+}
+
+function captureUndo(label) {
+  state.undoSnapshot = {
+    label,
+    snapshot: serializeState({ includeTransient: true })
+  };
+  updateUndoButton();
+}
+
+function undoLastAction() {
+  if (!state.undoSnapshot) return;
+  const { label, snapshot } = state.undoSnapshot;
+  restoreState(snapshot, { reopenDialogs: true });
+  state.undoSnapshot = null;
+  updateUndoButton();
+  saveState();
+  showToast(`Undid ${label}`, "neutral");
+}
+
+function recordHistory(entry) {
+  state.actionHistory.unshift({
+    title: entry.title,
+    detail: entry.detail,
+    delta: entry.delta ?? null,
+    type: entry.type || "neutral"
+  });
+  state.actionHistory = state.actionHistory.slice(0, 5);
+  renderRecentPlays();
+}
+
+function showToast(message, type = "neutral") {
+  if (!scoreToast) return;
+  window.clearTimeout(toastTimer);
+  scoreToast.textContent = message;
+  scoreToast.className = `score-toast show ${type}`;
+  toastTimer = window.setTimeout(() => {
+    scoreToast.classList.remove("show");
+  }, 1800);
+}
+
+function applyPresenterMode() {
+  document.body.classList.toggle("presenter-mode", state.presenterMode);
+  if (presenterToggle) {
+    presenterToggle.checked = state.presenterMode;
+  }
+}
+
+function setPresenterMode(enabled) {
+  state.presenterMode = Boolean(enabled);
+  applyPresenterMode();
+  saveState();
+}
+
+function getCurrentJourneyStage(progressRatio) {
   const stages = gameData.progressStages;
-  const totalClues = getTotalClues();
-  const progressRatio = totalClues ? state.usedClues.size / totalClues : 0;
   const activeStage = Math.min(stages.length - 1, Math.floor(progressRatio * stages.length));
-  journeyFill.style.width = `${Math.round(progressRatio * 100)}%`;
-  journeyStages.textContent = stages[activeStage];
-  journeyMeter.setAttribute("aria-label", `World Food Safety Day progress journey. Current stage: ${stages[activeStage]}.`);
+  return stages[activeStage];
 }
 
 function eligibleChallengeClueIds() {
@@ -238,6 +479,7 @@ function setChallengeEnabled(enabled) {
   state.challengeEnabled = enabled;
   challengeToggle.checked = enabled;
   seedChallengeClue();
+  saveState();
 }
 
 function readSoundPreference() {
@@ -339,6 +581,7 @@ function renderScoreboard() {
       renderScoreboard();
       renderTeamSelect();
       updateBoardStatus();
+      saveState();
     });
     scoreboard.appendChild(card);
   });
@@ -406,10 +649,35 @@ function saveTeams() {
     score: state.teams[index]?.score || 0
   }));
   state.activeTeam = Math.min(state.activeTeam, state.teams.length - 1);
+  state.finalWagers = state.finalWagers.slice(0, state.teams.length);
   renderScoreboard();
   renderTeamSelect();
   updateBoardStatus();
+  saveState();
   closeDialog(setupDialog);
+}
+
+function renderCurrentClueView() {
+  if (!state.currentClue) return;
+  const { category, clue, isChallenge } = state.currentClue;
+  clueMeta.textContent = `${category.name} - ${isChallenge ? clue.value * 2 : clue.value} Points`;
+  clueStage.textContent = state.currentClue.revealed ? "Response Revealed" : "Clue";
+  categoryPrompt.hidden = true;
+  renderClueStinger(category, isChallenge, false);
+  clueText.textContent = clue.clue;
+  responseText.textContent = clue.response;
+  whyText.textContent = clue.why;
+  teachingTag.textContent = clue.tag;
+  renderGlossary(glossaryStrip, clue);
+  bridgeText.textContent = clue.bridge;
+  riskSignal.textContent = clue.riskCard.signal;
+  riskConcern.textContent = clue.riskCard.risk;
+  riskAction.textContent = clue.riskCard.action;
+  responseBlock.hidden = !state.currentClue.revealed;
+  resetTimerDisplay();
+  revealButton.disabled = state.currentClue.revealed;
+  renderTeamSelect();
+  updateScoreButtons();
 }
 
 function openClue(categoryIndex, itemIndex) {
@@ -427,33 +695,19 @@ function openClue(categoryIndex, itemIndex) {
     scoredTeams: new Set(),
     noScore: false,
     stealOpen: false,
-    resolved: false
+    resolved: false,
+    revealed: false
   };
 
-  clueMeta.textContent = `${category.name} - ${isChallenge ? clue.value * 2 : clue.value} Points`;
-  clueStage.textContent = "Clue";
   const showCategoryPrompt = !state.seenCategoryPrompts.has(category.id);
-  categoryPrompt.hidden = true;
-  renderClueStinger(category, isChallenge, showCategoryPrompt);
   state.seenCategoryPrompts.add(category.id);
-  clueText.textContent = clue.clue;
-  responseText.textContent = clue.response;
-  whyText.textContent = clue.why;
-  teachingTag.textContent = clue.tag;
-  renderGlossary(glossaryStrip, clue);
-  bridgeText.textContent = clue.bridge;
-  riskSignal.textContent = clue.riskCard.signal;
-  riskConcern.textContent = clue.riskCard.risk;
-  riskAction.textContent = clue.riskCard.action;
-  responseBlock.hidden = true;
-  resetTimerDisplay();
-  revealButton.disabled = false;
+  renderCurrentClueView();
+  renderClueStinger(category, isChallenge, showCategoryPrompt);
   correctButton.disabled = true;
   incorrectButton.disabled = true;
   noScoreButton.disabled = true;
   hostNote.textContent = `${state.teams[state.activeTeam].name} has about 30 seconds. The host may allow one steal after a miss.`;
-  renderTeamSelect();
-  updateScoreButtons();
+  saveState();
   showDialog(clueDialog);
 }
 
@@ -461,6 +715,7 @@ function revealClue() {
   playSound("reveal");
   stopTimer();
   responseBlock.hidden = false;
+  state.currentClue.revealed = true;
   clueStage.textContent = "Response Revealed";
   revealButton.disabled = true;
   updateScoreButtons();
@@ -499,6 +754,8 @@ function applyScore(multiplier) {
   playSound(multiplier > 0 ? "correct" : "incorrect");
   const team = state.teams[teamIndex];
   const value = currentClueScoreValue();
+  const delta = value * multiplier;
+  captureUndo(`${team.name} ${formatDelta(delta)}`);
   team.score += value * multiplier;
   state.currentClue.scoredTeams.add(teamIndex);
   state.activeTeam = teamIndex;
@@ -522,10 +779,20 @@ function applyScore(multiplier) {
   } else {
     hostNote.textContent = `${team.name} lost ${value} points. Steal available: choose another team, or use No Score to close the clue.`;
   }
+  recordHistory({
+    title: `${state.currentClue.category.name} ${state.currentClue.clue.value}`,
+    detail: `${team.name} ${formatDelta(delta)}`,
+    delta,
+    type: multiplier > 0 ? "positive" : "negative"
+  });
+  showToast(`${team.name} ${formatDelta(delta)}`, multiplier > 0 ? "positive" : "negative");
+  saveState();
 }
 
 function noScore() {
   if (!state.currentClue) return;
+  const label = `${state.currentClue.category.name} ${state.currentClue.clue.value} closed`;
+  captureUndo(label);
   state.currentClue.noScore = true;
   state.currentClue.resolved = true;
   markCurrentUsed();
@@ -534,6 +801,13 @@ function noScore() {
   hostNote.textContent = state.currentClue.scoredTeams.size
     ? "Clue closed with no steal score."
     : "Clue marked used with no score change.";
+  recordHistory({
+    title: `${state.currentClue.category.name} ${state.currentClue.clue.value}`,
+    detail: "Closed with no score",
+    type: "neutral"
+  });
+  showToast(label, "neutral");
+  saveState();
 }
 
 function updateScoreButtons() {
@@ -561,10 +835,15 @@ function resetGame() {
   state.teams = state.teams.map((team) => ({ ...team, score: 0 }));
   state.activeTeam = 0;
   state.usedClues.clear();
+  state.currentClue = null;
   state.seenCategoryPrompts.clear();
   state.challengeEnabled = true;
   challengeToggle.checked = true;
   seedChallengeClue();
+  state.actionHistory = [];
+  state.undoSnapshot = null;
+  state.finalWagers = [];
+  state.finalResponseRevealed = false;
   state.finalScoredTeams.clear();
   state.finalComplete = false;
   updateFinalButton();
@@ -572,7 +851,12 @@ function resetGame() {
   renderScoreboard();
   renderTeamSelect();
   renderBoard();
+  renderHostNotes();
+  updateUndoButton();
   updateBoardStatus("Game reset. Choose a team, then choose a clue.");
+  clearSavedState();
+  closeGameDialogs();
+  showToast("Game reset", "neutral");
 }
 
 function nextTeam() {
@@ -580,6 +864,7 @@ function nextTeam() {
   renderScoreboard();
   renderTeamSelect();
   updateBoardStatus();
+  saveState();
 }
 
 function openFinal() {
@@ -598,9 +883,10 @@ function openFinal() {
   finalRiskSignal.textContent = gameData.finalJeopardy.riskCard.signal;
   finalRiskConcern.textContent = gameData.finalJeopardy.riskCard.risk;
   finalRiskAction.textContent = gameData.finalJeopardy.riskCard.action;
-  finalResponseBlock.hidden = true;
-  revealFinalButton.disabled = false;
+  finalResponseBlock.hidden = !state.finalResponseRevealed;
+  revealFinalButton.disabled = state.finalResponseRevealed;
   renderWagers();
+  renderFinalStage();
   showDialog(finalDialog);
 }
 
@@ -610,29 +896,54 @@ function renderWagers() {
     const card = document.createElement("article");
     const maxWager = Math.max(0, team.score);
     const isScored = state.finalScoredTeams.has(index);
+    const wager = Math.min(maxWager, Math.max(0, Number(state.finalWagers[index]) || 0));
+    state.finalWagers[index] = wager;
     card.className = `wager-card${isScored ? " scored" : ""}`;
     card.innerHTML = `
       <label>
         <span>${team.name}</span>
-        <input type="number" min="0" max="${maxWager}" step="100" value="0" data-wager-index="${index}" aria-label="${team.name} wager" ${isScored ? "disabled" : ""}>
+        <input type="number" min="0" max="${maxWager}" step="100" value="${wager}" data-wager-index="${index}" aria-label="${team.name} wager" ${isScored ? "disabled" : ""}>
       </label>
       <p class="wager-limit">Max wager: ${formatScore(maxWager)}</p>
       <div class="wager-actions">
-        <button class="score-button positive" type="button" data-final-result="correct" data-team-index="${index}" disabled>Correct</button>
-        <button class="score-button negative" type="button" data-final-result="incorrect" data-team-index="${index}" disabled>Incorrect</button>
+        <button class="score-button positive" type="button" data-final-result="correct" data-team-index="${index}" ${state.finalResponseRevealed && !isScored ? "" : "disabled"}>Correct</button>
+        <button class="score-button negative" type="button" data-final-result="incorrect" data-team-index="${index}" ${state.finalResponseRevealed && !isScored ? "" : "disabled"}>Incorrect</button>
       </div>
     `;
     wagerGrid.appendChild(card);
   });
 }
 
+function renderFinalStage() {
+  if (!finalSteps) return;
+  let activeStep = "wagers";
+  const scoredCount = state.finalScoredTeams.size;
+  if (state.finalComplete) {
+    activeStep = "results";
+  } else if (scoredCount > 0) {
+    activeStep = "score";
+  } else if (state.finalResponseRevealed) {
+    activeStep = "response";
+  }
+  const order = ["wagers", "prompt", "response", "score", "results"];
+  const activeIndex = order.indexOf(activeStep);
+  finalSteps.querySelectorAll("li").forEach((step) => {
+    const stepIndex = order.indexOf(step.dataset.finalStep);
+    step.classList.toggle("active", step.dataset.finalStep === activeStep);
+    step.classList.toggle("complete", stepIndex > -1 && stepIndex < activeIndex);
+  });
+}
+
 function revealFinal() {
   playSound("reveal");
   finalResponseBlock.hidden = false;
+  state.finalResponseRevealed = true;
   revealFinalButton.disabled = true;
   wagerGrid.querySelectorAll("button").forEach((button) => {
     button.disabled = state.finalScoredTeams.has(Number(button.dataset.teamIndex));
   });
+  renderFinalStage();
+  saveState();
   wagerGrid.querySelector("button:not(:disabled)")?.focus();
 }
 
@@ -644,7 +955,10 @@ function applyFinalScore(button) {
   const maxWager = Math.max(0, state.teams[teamIndex].score);
   const wager = Math.min(maxWager, Math.max(0, Number(input.value) || 0));
   input.value = String(wager);
+  state.finalWagers[teamIndex] = wager;
   const multiplier = result === "correct" ? 1 : -1;
+  const delta = wager * multiplier;
+  captureUndo(`${state.teams[teamIndex].name} Final ${formatDelta(delta)}`);
   playSound(multiplier > 0 ? "correct" : "incorrect");
   state.teams[teamIndex].score += wager * multiplier;
   state.finalScoredTeams.add(teamIndex);
@@ -657,14 +971,24 @@ function applyFinalScore(button) {
   renderScoreboard();
   animateScore(teamIndex, multiplier);
   updateBoardStatus();
+  renderFinalStage();
+  recordHistory({
+    title: "Final Jeopardy",
+    detail: `${state.teams[teamIndex].name} ${formatDelta(delta)}`,
+    delta,
+    type: multiplier > 0 ? "positive" : "negative"
+  });
+  showToast(`${state.teams[teamIndex].name} ${formatDelta(delta)}`, multiplier > 0 ? "positive" : "negative");
   if (state.finalScoredTeams.size === state.teams.length) {
     state.finalComplete = true;
     updateFinalButton();
     updateBoardStatus();
+    renderFinalStage();
     renderEndScreen();
     closeDialog(finalDialog);
     window.setTimeout(() => showDialog(endDialog, finalButton), 0);
   }
+  saveState();
 }
 
 function renderRules() {
@@ -673,6 +997,8 @@ function renderRules() {
 }
 
 function renderHostNotes() {
+  presenterToggle.checked = state.presenterMode;
+  challengeToggle.checked = state.challengeEnabled;
   challengeToggleLabel.textContent = gameData.challengeClue.label;
   challengeToggleDescription.textContent = gameData.challengeClue.description;
   hostScriptList.innerHTML = gameData.hostNotes
@@ -683,11 +1009,33 @@ function renderHostNotes() {
       </article>
     `)
     .join("");
-  shortcutList.innerHTML = gameData.shortcuts
+  const hostShortcuts = [
+    ...gameData.shortcuts,
+    { key: "U", action: "Undo last action" },
+    { key: "P", action: "Presenter mode" }
+  ];
+  shortcutList.innerHTML = hostShortcuts
     .map((shortcut) => `
       <article>
         <kbd>${shortcut.key}</kbd>
         <span>${shortcut.action}</span>
+      </article>
+    `)
+    .join("");
+  renderRecentPlays();
+}
+
+function renderRecentPlays() {
+  if (!recentPlayList) return;
+  if (!state.actionHistory.length) {
+    recentPlayList.innerHTML = "<p>No plays yet.</p>";
+    return;
+  }
+  recentPlayList.innerHTML = state.actionHistory
+    .map((entry) => `
+      <article class="${entry.type || "neutral"}">
+        <span>${entry.title}</span>
+        <p>${entry.detail}</p>
       </article>
     `)
     .join("");
@@ -828,6 +1176,18 @@ function handleKeyboardShortcuts(event) {
   ) return;
 
   const key = event.key.toLowerCase();
+  if (key === "u") {
+    event.preventDefault();
+    undoLastAction();
+    return;
+  }
+
+  if (key === "p") {
+    event.preventDefault();
+    setPresenterMode(!state.presenterMode);
+    return;
+  }
+
   if (key === "r") {
     if (isDialogOpen(clueDialog)) {
       event.preventDefault();
@@ -872,6 +1232,8 @@ function bindEvents() {
   document.getElementById("closeRulesButton").addEventListener("click", () => closeDialog(rulesDialog));
   document.getElementById("hostNotesButton").addEventListener("click", (event) => showDialog(hostNotesDialog, event.currentTarget));
   document.getElementById("closeHostNotesIcon").addEventListener("click", () => closeDialog(hostNotesDialog));
+  undoButton.addEventListener("click", undoLastAction);
+  presenterToggle.addEventListener("change", () => setPresenterMode(presenterToggle.checked));
   challengeToggle.addEventListener("change", () => setChallengeEnabled(challengeToggle.checked));
   document.getElementById("resetButton").addEventListener("click", resetGame);
   document.getElementById("nextTeamButton").addEventListener("click", nextTeam);
@@ -916,6 +1278,7 @@ function bindEvents() {
     renderScoreboard();
     updateBoardStatus();
     updateScoreButtons();
+    saveState();
   });
   revealButton.addEventListener("click", revealClue);
   timerButton.addEventListener("click", startTimer);
@@ -923,6 +1286,15 @@ function bindEvents() {
   incorrectButton.addEventListener("click", () => applyScore(-1));
   noScoreButton.addEventListener("click", noScore);
   revealFinalButton.addEventListener("click", revealFinal);
+  wagerGrid.addEventListener("input", (event) => {
+    const input = event.target.closest("input[data-wager-index]");
+    if (!input) return;
+    const teamIndex = Number(input.dataset.wagerIndex);
+    const maxWager = Math.max(0, state.teams[teamIndex].score);
+    const wager = Math.min(maxWager, Math.max(0, Number(input.value) || 0));
+    state.finalWagers[teamIndex] = wager;
+    saveState();
+  });
   wagerGrid.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-final-result]");
     if (button) applyFinalScore(button);
@@ -937,12 +1309,17 @@ function init() {
   gameSubtitle.textContent = gameData.subtitle;
   gameTheme.textContent = gameData.theme;
   renderRules();
-  renderHostNotes();
-  seedChallengeClue();
-  renderScoreboard();
-  renderTeamSelect();
-  renderBoard();
-  updateBoardStatus();
+  const resumed = loadState();
+  if (!resumed) {
+    seedChallengeClue();
+    renderScoreboard();
+    renderTeamSelect();
+    renderBoard();
+    renderHostNotes();
+    updateBoardStatus();
+    updateUndoButton();
+    applyPresenterMode();
+  }
   bindEvents();
 }
 

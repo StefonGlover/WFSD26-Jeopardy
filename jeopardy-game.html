@@ -36,12 +36,9 @@
         <div class="footer-support">
           <div class="footer-status" aria-live="polite">
             <p class="progress-status" id="progressStatus">0/25</p>
-            <div class="journey-meter" aria-label="World Food Safety Day progress journey">
-              <div class="journey-track"><span id="journeyFill"></span></div>
-              <div class="journey-stages" id="journeyStages"></div>
-            </div>
           </div>
           <button class="text-button notes-button" type="button" id="hostNotesButton">Notes</button>
+          <button class="text-button undo-button" type="button" id="undoButton" disabled>Undo</button>
         </div>
         <div class="footer-flow">
           <button class="text-button next-team-button" type="button" id="nextTeamButton">Next Team →</button>
@@ -50,6 +47,8 @@
         </div>
       </footer>
     </main>
+
+    <div class="score-toast" id="scoreToast" role="status" aria-live="polite" aria-atomic="true"></div>
 
     <dialog class="setup-dialog" id="setupDialog" aria-labelledby="setupTitle">
       <form method="dialog" class="setup-panel" id="setupForm">
@@ -133,6 +132,13 @@
           <button class="icon-button close-button" type="button" id="closeFinalButton" title="Back to board" aria-label="Back to board">x</button>
         </div>
         <div class="clue-card">
+          <ol class="final-steps" id="finalSteps" aria-label="Final Jeopardy flow">
+            <li data-final-step="wagers">Wagers</li>
+            <li data-final-step="prompt">Prompt</li>
+            <li data-final-step="response">Response</li>
+            <li data-final-step="score">Score</li>
+            <li data-final-step="results">Results</li>
+          </ol>
           <p class="clue-label">Final Clue</p>
           <h2 id="finalClue"></h2>
           <div class="wager-grid" id="wagerGrid"></div>
@@ -183,10 +189,19 @@
           <div class="host-note-section">
             <h3 class="section-title">Run of Show</h3>
             <div class="host-note-grid" id="hostScriptList"></div>
+            <h3 class="section-title recent-title">Recent Plays</h3>
+            <div class="recent-play-list" id="recentPlayList">
+              <p>No plays yet.</p>
+            </div>
           </div>
           <aside class="shortcut-panel" aria-label="Keyboard shortcuts">
             <h3 class="section-title">Shortcuts</h3>
             <div class="shortcut-list" id="shortcutList"></div>
+            <label class="challenge-toggle presenter-toggle" for="presenterToggle">
+              <input type="checkbox" id="presenterToggle">
+              <span>Presenter Mode</span>
+              <small>Hide setup controls for a cleaner projector view.</small>
+            </label>
             <label class="challenge-toggle" for="challengeToggle">
               <input type="checkbox" id="challengeToggle" checked>
               <span id="challengeToggleLabel">Challenge Clue</span>
