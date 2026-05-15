@@ -1,10 +1,27 @@
 window.JeopardyData = {
-  title: "Safe Food Everywhere Jeopardy",
+  title: "Safe Food, Fast Thinking",
   subtitle: "World Food Safety Day 2026",
   theme: "From burden to solutions – safe food everywhere",
   themeStatement: "Use data, science, and shared ownership to turn food safety signals into targeted preventive action.",
   themeLens: "Theme Lens: after each response, connect the clue to how teams move from a food safety signal to a science-based solution that protects consumers.",
   closeout: "Safe Food Everywhere: Every Function Turns Signals Into Prevention.",
+  debriefTakeaways: [
+    { title: "Spot signals", text: "Notice complaints, records, holds, observations, and trends early." },
+    { title: "Rank risk", text: "Use science and evidence to focus attention where impact could be greatest." },
+    { title: "Verify prevention", text: "Assign owners, complete actions, and confirm the risk is reduced." }
+  ],
+  hostNotes: [
+    { title: "Intro", text: "Welcome teams. Today we are practicing how Coca-Cola teams move from burden signals to practical food safety solutions." },
+    { title: "Scoring", text: "Reveal the response before scoring. Correct adds the tile value; incorrect subtracts it." },
+    { title: "Steal", text: "After a miss, choose another team for one optional steal or close the clue with no score." },
+    { title: "Close", text: "Ask each team to name one signal they will watch for and one prevention action they can strengthen." }
+  ],
+  shortcuts: [
+    { key: "R", action: "Reveal response" },
+    { key: "C", action: "Mark clue correct" },
+    { key: "I", action: "Mark clue incorrect" },
+    { key: "N", action: "Move to next team" }
+  ],
   hashtag: "#WorldFoodSafetyDay",
   brands: "Coca-Cola • Coca-Cola Zero Sugar • Sprite • Fanta • DASANI • Minute Maid • fairlife • CORE POWER",
   themeGlossary: {

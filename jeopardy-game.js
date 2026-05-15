@@ -1,5 +1,6 @@
 const gameData = window.JeopardyData;
 const SOUND_STORAGE_KEY = "jeopardy-sound-muted";
+const dialogReturnFocus = new WeakMap();
 
 const state = {
   teams: [
@@ -14,6 +15,7 @@ const state = {
   secondsLeft: 30,
   soundMuted: true,
   audioContext: null,
+  seenCategoryPrompts: new Set(),
   finalScoredTeams: new Set(),
   finalComplete: false
 };
@@ -32,6 +34,7 @@ const teamFields = document.getElementById("teamFields");
 const clueDialog = document.getElementById("clueDialog");
 const clueMeta = document.getElementById("clueMeta");
 const clueStage = document.getElementById("clueStage");
+const categoryPrompt = document.getElementById("categoryPrompt");
 const clueText = document.getElementById("clueText");
 const responseBlock = document.getElementById("responseBlock");
 const responseText = document.getElementById("responseText");
@@ -49,6 +52,8 @@ const revealButton = document.getElementById("revealButton");
 const correctButton = document.getElementById("correctButton");
 const incorrectButton = document.getElementById("incorrectButton");
 const noScoreButton = document.getElementById("noScoreButton");
+const backButton = document.getElementById("backButton");
+const closeClueButton = document.getElementById("closeClueButton");
 const hostNote = document.getElementById("hostNote");
 const finalDialog = document.getElementById("finalDialog");
 const finalCategory = document.getElementById("finalCategory");
@@ -62,7 +67,11 @@ const finalRiskSignal = document.getElementById("finalRiskSignal");
 const finalRiskConcern = document.getElementById("finalRiskConcern");
 const finalRiskAction = document.getElementById("finalRiskAction");
 const wagerGrid = document.getElementById("wagerGrid");
+const finalButton = document.getElementById("finalButton");
 const revealFinalButton = document.getElementById("revealFinalButton");
+const hostNotesDialog = document.getElementById("hostNotesDialog");
+const hostScriptList = document.getElementById("hostScriptList");
+const shortcutList = document.getElementById("shortcutList");
 const rulesDialog = document.getElementById("rulesDialog");
 const rulesList = document.getElementById("rulesList");
 const rulesThemeLens = document.getElementById("rulesThemeLens");
@@ -70,12 +79,36 @@ const endDialog = document.getElementById("endDialog");
 const winnerTitle = document.getElementById("winnerTitle");
 const closeoutText = document.getElementById("closeoutText");
 const finalScoreList = document.getElementById("finalScoreList");
+const debriefTakeaways = document.getElementById("debriefTakeaways");
 
 function clueId(categoryIndex, clueIndex) {
   return `${categoryIndex}-${clueIndex}`;
 }
 
-function showDialog(dialog) {
+function getTotalClues() {
+  return gameData.categories.reduce((sum, category) => sum + category.clues.length, 0);
+}
+
+function rememberDialogFocus(dialog, returnFocusElement = document.activeElement) {
+  if (returnFocusElement instanceof HTMLElement) {
+    dialogReturnFocus.set(dialog, returnFocusElement);
+  }
+}
+
+function restoreDialogFocus(dialog) {
+  const returnFocusElement = dialogReturnFocus.get(dialog);
+  if (
+    returnFocusElement instanceof HTMLElement &&
+    document.contains(returnFocusElement) &&
+    !returnFocusElement.disabled
+  ) {
+    returnFocusElement.focus();
+  }
+  dialogReturnFocus.delete(dialog);
+}
+
+function showDialog(dialog, returnFocusElement = document.activeElement) {
+  rememberDialogFocus(dialog, returnFocusElement);
   if (typeof dialog.showModal === "function") {
     dialog.showModal();
     return;
@@ -89,6 +122,7 @@ function closeDialog(dialog) {
     return;
   }
   dialog.removeAttribute("open");
+  restoreDialogFocus(dialog);
 }
 
 function formatScore(score) {
@@ -113,12 +147,24 @@ function renderGlossary(strip, item) {
 }
 
 function updateBoardStatus(message) {
-  boardStatus.textContent = message || `${state.teams[state.activeTeam].name} is choosing.`;
+  if (message) {
+    boardStatus.textContent = message;
+  } else if (state.finalComplete) {
+    boardStatus.textContent = "Final Jeopardy complete. Show results when ready.";
+  } else if (state.usedClues.size === getTotalClues()) {
+    boardStatus.textContent = "Board complete. Open Final Jeopardy.";
+  } else {
+    boardStatus.textContent = `${state.teams[state.activeTeam].name} is choosing.`;
+  }
+  updateFinalButton();
 }
 
 function updateProgress() {
-  const totalClues = gameData.categories.reduce((sum, category) => sum + category.clues.length, 0);
-  progressStatus.textContent = `${state.usedClues.size}/${totalClues} clues played`;
+  progressStatus.textContent = `${state.usedClues.size}/${getTotalClues()} clues played`;
+}
+
+function updateFinalButton() {
+  finalButton.textContent = state.finalComplete ? "Show Results" : "Final Jeopardy";
 }
 
 function readSoundPreference() {
@@ -310,6 +356,10 @@ function openClue(categoryIndex, itemIndex) {
 
   clueMeta.textContent = `${category.name} - ${clue.value} Points`;
   clueStage.textContent = "Clue";
+  const showCategoryPrompt = !state.seenCategoryPrompts.has(category.id);
+  categoryPrompt.hidden = !showCategoryPrompt;
+  categoryPrompt.textContent = showCategoryPrompt ? `Category lens: ${category.accent}` : "";
+  state.seenCategoryPrompts.add(category.id);
   clueText.textContent = clue.clue;
   responseText.textContent = clue.response;
   whyText.textContent = clue.why;
@@ -398,6 +448,7 @@ function noScore() {
   state.currentClue.resolved = true;
   markCurrentUsed();
   updateScoreButtons();
+  updateBoardStatus();
   hostNote.textContent = state.currentClue.scoredTeams.size
     ? "Clue closed with no steal score."
     : "Clue marked used with no score change.";
@@ -414,8 +465,9 @@ function updateScoreButtons() {
   incorrectButton.disabled = !revealed || alreadyScored || noScoreApplied || resolved;
   noScoreButton.disabled = !revealed || noScoreApplied || resolved;
   noScoreButton.textContent = stealPending ? "Close Clue" : "No Score";
-  document.getElementById("backButton").disabled = stealPending;
-  document.getElementById("closeClueButton").disabled = stealPending;
+  backButton.disabled = stealPending;
+  closeClueButton.disabled = stealPending;
+  backButton.classList.toggle("primary-next", resolved && !stealPending);
 }
 
 function resetGame() {
@@ -424,8 +476,10 @@ function resetGame() {
   state.teams = state.teams.map((team) => ({ ...team, score: 0 }));
   state.activeTeam = 0;
   state.usedClues.clear();
+  state.seenCategoryPrompts.clear();
   state.finalScoredTeams.clear();
   state.finalComplete = false;
+  updateFinalButton();
   stopTimer();
   renderScoreboard();
   renderTeamSelect();
@@ -444,7 +498,7 @@ function openFinal() {
   stopTimer();
   if (state.finalComplete) {
     renderEndScreen();
-    showDialog(endDialog);
+    showDialog(endDialog, finalButton);
     return;
   }
   finalCategory.textContent = gameData.finalJeopardy.category;
@@ -517,15 +571,36 @@ function applyFinalScore(button) {
   updateBoardStatus();
   if (state.finalScoredTeams.size === state.teams.length) {
     state.finalComplete = true;
+    updateFinalButton();
+    updateBoardStatus();
     renderEndScreen();
     closeDialog(finalDialog);
-    window.setTimeout(() => showDialog(endDialog), 0);
+    window.setTimeout(() => showDialog(endDialog, finalButton), 0);
   }
 }
 
 function renderRules() {
   rulesThemeLens.textContent = gameData.themeLens;
   rulesList.innerHTML = gameData.rules.map((rule) => `<li>${rule}</li>`).join("");
+}
+
+function renderHostNotes() {
+  hostScriptList.innerHTML = gameData.hostNotes
+    .map((note) => `
+      <article class="host-note-card">
+        <span>${note.title}</span>
+        <p>${note.text}</p>
+      </article>
+    `)
+    .join("");
+  shortcutList.innerHTML = gameData.shortcuts
+    .map((shortcut) => `
+      <article>
+        <kbd>${shortcut.key}</kbd>
+        <span>${shortcut.action}</span>
+      </article>
+    `)
+    .join("");
 }
 
 function resetTimerDisplay() {
@@ -574,22 +649,103 @@ function renderEndScreen() {
   finalScoreList.innerHTML = ranked
     .map((team) => `<div><span>${team.name}</span><strong>${formatScore(team.score)}</strong></div>`)
     .join("");
+  debriefTakeaways.innerHTML = gameData.debriefTakeaways
+    .map((takeaway) => `
+      <article>
+        <span>${takeaway.title}</span>
+        <p>${takeaway.text}</p>
+      </article>
+    `)
+    .join("");
+}
+
+function isTypingTarget(target) {
+  const tagName = target?.tagName;
+  return (
+    target?.isContentEditable ||
+    tagName === "INPUT" ||
+    tagName === "TEXTAREA" ||
+    tagName === "SELECT"
+  );
+}
+
+function isDialogOpen(dialog) {
+  return Boolean(dialog?.open);
+}
+
+function clickIfAvailable(button) {
+  if (!button || button.disabled) return false;
+  button.click();
+  return true;
+}
+
+function handleKeyboardShortcuts(event) {
+  if (
+    event.defaultPrevented ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.shiftKey ||
+    isTypingTarget(event.target)
+  ) return;
+
+  const key = event.key.toLowerCase();
+  if (key === "r") {
+    if (isDialogOpen(clueDialog)) {
+      event.preventDefault();
+      clickIfAvailable(revealButton);
+    } else if (isDialogOpen(finalDialog)) {
+      event.preventDefault();
+      clickIfAvailable(revealFinalButton);
+    }
+    return;
+  }
+
+  if (key === "c" && isDialogOpen(clueDialog)) {
+    event.preventDefault();
+    clickIfAvailable(correctButton);
+    return;
+  }
+
+  if (key === "i" && isDialogOpen(clueDialog)) {
+    event.preventDefault();
+    clickIfAvailable(incorrectButton);
+    return;
+  }
+
+  if (
+    key === "n" &&
+    !isDialogOpen(setupDialog) &&
+    !isDialogOpen(clueDialog) &&
+    !isDialogOpen(finalDialog) &&
+    !isDialogOpen(rulesDialog) &&
+    !isDialogOpen(hostNotesDialog) &&
+    !isDialogOpen(endDialog)
+  ) {
+    event.preventDefault();
+    nextTeam();
+  }
 }
 
 function bindEvents() {
   soundButton.addEventListener("click", toggleSound);
   document.getElementById("setupButton").addEventListener("click", openSetup);
-  document.getElementById("rulesButton").addEventListener("click", () => showDialog(rulesDialog));
+  document.getElementById("rulesButton").addEventListener("click", (event) => showDialog(rulesDialog, event.currentTarget));
   document.getElementById("closeRulesButton").addEventListener("click", () => closeDialog(rulesDialog));
+  document.getElementById("hostNotesButton").addEventListener("click", (event) => showDialog(hostNotesDialog, event.currentTarget));
+  document.getElementById("closeHostNotesIcon").addEventListener("click", () => closeDialog(hostNotesDialog));
   document.getElementById("resetButton").addEventListener("click", resetGame);
   document.getElementById("nextTeamButton").addEventListener("click", nextTeam);
-  document.getElementById("finalButton").addEventListener("click", openFinal);
-  document.getElementById("endButton").addEventListener("click", () => {
+  finalButton.addEventListener("click", openFinal);
+  document.getElementById("endButton").addEventListener("click", (event) => {
+    if (!state.finalComplete && !window.confirm("Final Jeopardy is not complete. Show current scores anyway?")) {
+      return;
+    }
     renderEndScreen();
-    showDialog(endDialog);
+    showDialog(endDialog, event.currentTarget);
   });
-  document.getElementById("closeClueButton").addEventListener("click", () => closeDialog(clueDialog));
-  document.getElementById("backButton").addEventListener("click", () => closeDialog(clueDialog));
+  closeClueButton.addEventListener("click", () => closeDialog(clueDialog));
+  backButton.addEventListener("click", () => closeDialog(clueDialog));
   clueDialog.addEventListener("cancel", (event) => {
     if (state.currentClue?.stealOpen && !state.currentClue.resolved) {
       event.preventDefault();
@@ -598,6 +754,9 @@ function bindEvents() {
   document.getElementById("closeFinalButton").addEventListener("click", () => closeDialog(finalDialog));
   document.getElementById("finalBackButton").addEventListener("click", () => closeDialog(finalDialog));
   document.getElementById("closeEndButton").addEventListener("click", () => closeDialog(endDialog));
+  [setupDialog, clueDialog, finalDialog, hostNotesDialog, rulesDialog, endDialog].forEach((dialog) => {
+    dialog.addEventListener("close", () => restoreDialogFocus(dialog));
+  });
   document.getElementById("addTeamButton").addEventListener("click", () => {
     if (state.teams.length >= 5) return;
     state.teams.push({ name: `Team ${state.teams.length + 1}`, score: 0 });
@@ -629,6 +788,7 @@ function bindEvents() {
     const button = event.target.closest("button[data-final-result]");
     if (button) applyFinalScore(button);
   });
+  document.addEventListener("keydown", handleKeyboardShortcuts);
 }
 
 function init() {
@@ -638,6 +798,7 @@ function init() {
   gameSubtitle.textContent = gameData.subtitle;
   gameTheme.textContent = gameData.theme;
   renderRules();
+  renderHostNotes();
   renderScoreboard();
   renderTeamSelect();
   renderBoard();
