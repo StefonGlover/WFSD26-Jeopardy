@@ -13,7 +13,9 @@ const state = {
   timer: null,
   secondsLeft: 30,
   soundMuted: true,
-  audioContext: null
+  audioContext: null,
+  finalScoredTeams: new Set(),
+  finalComplete: false
 };
 
 const startScreen = document.getElementById("startScreen");
@@ -90,6 +92,10 @@ function closeDialog(dialog) {
 
 function formatScore(score) {
   return score < 0 ? `-$${Math.abs(score)}` : `$${score}`;
+}
+
+function updateBoardStatus(message) {
+  boardStatus.textContent = message || `${state.teams[state.activeTeam].name} is choosing.`;
 }
 
 function readSoundPreference() {
@@ -190,7 +196,7 @@ function renderScoreboard() {
       state.activeTeam = index;
       renderScoreboard();
       renderTeamSelect();
-      boardStatus.textContent = `${team.name} is choosing.`;
+      updateBoardStatus();
     });
     scoreboard.appendChild(card);
   });
@@ -259,6 +265,7 @@ function saveTeams() {
   state.activeTeam = Math.min(state.activeTeam, state.teams.length - 1);
   renderScoreboard();
   renderTeamSelect();
+  updateBoardStatus();
   closeDialog(setupDialog);
 }
 
@@ -272,7 +279,9 @@ function openClue(categoryIndex, itemIndex) {
     category,
     clue,
     scoredTeams: new Set(),
-    noScore: false
+    noScore: false,
+    stealOpen: false,
+    resolved: false
   };
 
   clueMeta.textContent = `${category.name} - ${clue.value} Points`;
@@ -324,7 +333,11 @@ function animateScore(teamIndex, multiplier) {
 function applyScore(multiplier) {
   if (!state.currentClue) return;
   const teamIndex = Number(modalTeamSelect.value);
-  if (state.currentClue.noScore || state.currentClue.scoredTeams.has(teamIndex)) return;
+  if (
+    state.currentClue.noScore ||
+    state.currentClue.resolved ||
+    state.currentClue.scoredTeams.has(teamIndex)
+  ) return;
   playSound(multiplier > 0 ? "correct" : "incorrect");
   const team = state.teams[teamIndex];
   const value = state.currentClue.clue.value;
@@ -332,21 +345,36 @@ function applyScore(multiplier) {
   state.currentClue.scoredTeams.add(teamIndex);
   state.activeTeam = teamIndex;
   markCurrentUsed();
+  if (multiplier > 0) {
+    state.currentClue.resolved = true;
+  } else if (state.currentClue.stealOpen || state.currentClue.scoredTeams.size >= state.teams.length) {
+    state.currentClue.resolved = true;
+  } else {
+    state.currentClue.stealOpen = true;
+  }
   renderScoreboard();
   animateScore(teamIndex, multiplier);
   renderTeamSelect();
   updateScoreButtons();
-  hostNote.textContent = multiplier > 0
-    ? `${team.name} earned ${value} points. Return to the board or keep moving.`
-    : `${team.name} lost ${value} points. Steal available: choose another team if the host wants to offer one.`;
+  updateBoardStatus();
+  if (multiplier > 0) {
+    hostNote.textContent = `${team.name} earned ${value} points. This clue is closed.`;
+  } else if (state.currentClue.resolved) {
+    hostNote.textContent = `${team.name} lost ${value} points. The steal attempt is complete and this clue is closed.`;
+  } else {
+    hostNote.textContent = `${team.name} lost ${value} points. Steal available: choose another team, or use No Score to close the clue.`;
+  }
 }
 
 function noScore() {
   if (!state.currentClue) return;
   state.currentClue.noScore = true;
+  state.currentClue.resolved = true;
   markCurrentUsed();
   updateScoreButtons();
-  hostNote.textContent = "Clue marked used with no score change.";
+  hostNote.textContent = state.currentClue.scoredTeams.size
+    ? "Clue closed with no steal score."
+    : "Clue marked used with no score change.";
 }
 
 function updateScoreButtons() {
@@ -354,9 +382,14 @@ function updateScoreButtons() {
   const selectedTeam = Number(modalTeamSelect.value);
   const alreadyScored = state.currentClue?.scoredTeams.has(selectedTeam);
   const noScoreApplied = Boolean(state.currentClue?.noScore);
-  correctButton.disabled = !revealed || alreadyScored || noScoreApplied;
-  incorrectButton.disabled = !revealed || alreadyScored || noScoreApplied;
-  noScoreButton.disabled = !revealed || noScoreApplied || Boolean(state.currentClue?.scoredTeams.size);
+  const resolved = Boolean(state.currentClue?.resolved);
+  const stealPending = Boolean(state.currentClue?.stealOpen && !resolved);
+  correctButton.disabled = !revealed || alreadyScored || noScoreApplied || resolved;
+  incorrectButton.disabled = !revealed || alreadyScored || noScoreApplied || resolved;
+  noScoreButton.disabled = !revealed || noScoreApplied || resolved;
+  noScoreButton.textContent = stealPending ? "Close Clue" : "No Score";
+  document.getElementById("backButton").disabled = stealPending;
+  document.getElementById("closeClueButton").disabled = stealPending;
 }
 
 function resetGame() {
@@ -365,15 +398,22 @@ function resetGame() {
   state.teams = state.teams.map((team) => ({ ...team, score: 0 }));
   state.activeTeam = 0;
   state.usedClues.clear();
+  state.finalScoredTeams.clear();
+  state.finalComplete = false;
   stopTimer();
   renderScoreboard();
   renderTeamSelect();
   renderBoard();
-  boardStatus.textContent = "Game reset. Choose a team, then choose a clue.";
+  updateBoardStatus("Game reset. Choose a team, then choose a clue.");
 }
 
 function openFinal() {
   stopTimer();
+  if (state.finalComplete) {
+    renderEndScreen();
+    showDialog(endDialog);
+    return;
+  }
   finalCategory.textContent = gameData.finalJeopardy.category;
   finalClue.textContent = gameData.finalJeopardy.clue;
   finalResponse.textContent = gameData.finalJeopardy.response;
@@ -392,12 +432,15 @@ function renderWagers() {
   wagerGrid.innerHTML = "";
   state.teams.forEach((team, index) => {
     const card = document.createElement("article");
-    card.className = "wager-card";
+    const maxWager = Math.max(0, team.score);
+    const isScored = state.finalScoredTeams.has(index);
+    card.className = `wager-card${isScored ? " scored" : ""}`;
     card.innerHTML = `
       <label>
         <span>${team.name}</span>
-        <input type="number" min="0" step="100" value="0" data-wager-index="${index}" aria-label="${team.name} wager">
+        <input type="number" min="0" max="${maxWager}" step="100" value="0" data-wager-index="${index}" aria-label="${team.name} wager" ${isScored ? "disabled" : ""}>
       </label>
+      <p class="wager-limit">Max wager: ${formatScore(maxWager)}</p>
       <div class="wager-actions">
         <button class="score-button positive" type="button" data-final-result="correct" data-team-index="${index}" disabled>Correct</button>
         <button class="score-button negative" type="button" data-final-result="incorrect" data-team-index="${index}" disabled>Incorrect</button>
@@ -412,25 +455,33 @@ function revealFinal() {
   finalResponseBlock.hidden = false;
   revealFinalButton.disabled = true;
   wagerGrid.querySelectorAll("button").forEach((button) => {
-    button.disabled = false;
+    button.disabled = state.finalScoredTeams.has(Number(button.dataset.teamIndex));
   });
 }
 
 function applyFinalScore(button) {
   const teamIndex = Number(button.dataset.teamIndex);
+  if (state.finalScoredTeams.has(teamIndex) || state.finalComplete) return;
   const result = button.dataset.finalResult;
   const input = wagerGrid.querySelector(`[data-wager-index="${teamIndex}"]`);
-  const wager = Math.max(0, Number(input.value) || 0);
+  const maxWager = Math.max(0, state.teams[teamIndex].score);
+  const wager = Math.min(maxWager, Math.max(0, Number(input.value) || 0));
+  input.value = String(wager);
   const multiplier = result === "correct" ? 1 : -1;
   playSound(multiplier > 0 ? "correct" : "incorrect");
   state.teams[teamIndex].score += wager * multiplier;
-  button.closest(".wager-card").classList.add("scored");
+  state.finalScoredTeams.add(teamIndex);
+  const card = button.closest(".wager-card");
+  card.classList.add("scored");
+  card.querySelector("input").disabled = true;
   button.closest(".wager-actions").querySelectorAll("button").forEach((item) => {
     item.disabled = true;
   });
   renderScoreboard();
   animateScore(teamIndex, multiplier);
-  if (wagerGrid.querySelectorAll(".wager-card.scored").length === state.teams.length) {
+  updateBoardStatus();
+  if (state.finalScoredTeams.size === state.teams.length) {
+    state.finalComplete = true;
     renderEndScreen();
     closeDialog(finalDialog);
     window.setTimeout(() => showDialog(endDialog), 0);
@@ -492,7 +543,8 @@ function renderEndScreen() {
 function bindEvents() {
   startButton.addEventListener("click", () => {
     startScreen.hidden = true;
-    boardStatus.textContent = `${state.teams[state.activeTeam].name} is choosing.`;
+    updateBoardStatus();
+    gameBoard.querySelector("button:not(:disabled)")?.focus();
   });
   soundButton.addEventListener("click", toggleSound);
   document.getElementById("setupButton").addEventListener("click", openSetup);
@@ -527,6 +579,7 @@ function bindEvents() {
   modalTeamSelect.addEventListener("change", () => {
     state.activeTeam = Number(modalTeamSelect.value);
     renderScoreboard();
+    updateBoardStatus();
     updateScoreButtons();
   });
   revealButton.addEventListener("click", revealClue);
