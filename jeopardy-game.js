@@ -16,6 +16,8 @@ const state = {
   soundMuted: true,
   audioContext: null,
   seenCategoryPrompts: new Set(),
+  challengeEnabled: true,
+  challengeClueId: null,
   finalScoredTeams: new Set(),
   finalComplete: false
 };
@@ -28,12 +30,19 @@ const scoreboard = document.getElementById("scoreboard");
 const gameBoard = document.getElementById("gameBoard");
 const boardStatus = document.getElementById("boardStatus");
 const progressStatus = document.getElementById("progressStatus");
+const journeyFill = document.getElementById("journeyFill");
+const journeyStages = document.getElementById("journeyStages");
+const journeyMeter = document.querySelector(".journey-meter");
 const setupDialog = document.getElementById("setupDialog");
 const setupForm = document.getElementById("setupForm");
 const teamFields = document.getElementById("teamFields");
 const clueDialog = document.getElementById("clueDialog");
 const clueMeta = document.getElementById("clueMeta");
 const clueStage = document.getElementById("clueStage");
+const clueStinger = document.getElementById("clueStinger");
+const stingerEyebrow = document.getElementById("stingerEyebrow");
+const stingerTitle = document.getElementById("stingerTitle");
+const stingerText = document.getElementById("stingerText");
 const categoryPrompt = document.getElementById("categoryPrompt");
 const clueText = document.getElementById("clueText");
 const responseBlock = document.getElementById("responseBlock");
@@ -69,9 +78,13 @@ const finalRiskAction = document.getElementById("finalRiskAction");
 const wagerGrid = document.getElementById("wagerGrid");
 const finalButton = document.getElementById("finalButton");
 const revealFinalButton = document.getElementById("revealFinalButton");
+const endButton = document.getElementById("endButton");
 const hostNotesDialog = document.getElementById("hostNotesDialog");
 const hostScriptList = document.getElementById("hostScriptList");
 const shortcutList = document.getElementById("shortcutList");
+const challengeToggle = document.getElementById("challengeToggle");
+const challengeToggleLabel = document.getElementById("challengeToggleLabel");
+const challengeToggleDescription = document.getElementById("challengeToggleDescription");
 const rulesDialog = document.getElementById("rulesDialog");
 const rulesList = document.getElementById("rulesList");
 const rulesThemeLens = document.getElementById("rulesThemeLens");
@@ -80,6 +93,7 @@ const winnerCelebration = document.getElementById("winnerCelebration");
 const winnerTitle = document.getElementById("winnerTitle");
 const closeoutText = document.getElementById("closeoutText");
 const finalScoreList = document.getElementById("finalScoreList");
+const pledgeCard = document.getElementById("pledgeCard");
 const debriefTakeaways = document.getElementById("debriefTakeaways");
 
 function clueId(categoryIndex, clueIndex) {
@@ -148,24 +162,82 @@ function renderGlossary(strip, item) {
 }
 
 function updateBoardStatus(message) {
+  let statusText;
   if (message) {
-    boardStatus.textContent = message;
+    statusText = message;
   } else if (state.finalComplete) {
-    boardStatus.textContent = "Final Jeopardy complete. Show results when ready.";
+    statusText = "Final Jeopardy complete. Show results when ready.";
   } else if (state.usedClues.size === getTotalClues()) {
-    boardStatus.textContent = "Board complete. Open Final Jeopardy.";
+    statusText = "Board complete. Open Final Jeopardy.";
   } else {
-    boardStatus.textContent = `${state.teams[state.activeTeam].name} is choosing.`;
+    statusText = `${state.teams[state.activeTeam].name} is choosing.`;
+  }
+  if (boardStatus) {
+    boardStatus.textContent = statusText;
   }
   updateFinalButton();
 }
 
 function updateProgress() {
-  progressStatus.textContent = `${state.usedClues.size}/${getTotalClues()} clues played`;
+  const totalClues = getTotalClues();
+  progressStatus.textContent = `${state.usedClues.size}/${totalClues}`;
+  progressStatus.setAttribute("aria-label", `${state.usedClues.size} of ${totalClues} clues played`);
+  renderJourneyMeter();
 }
 
 function updateFinalButton() {
   finalButton.textContent = state.finalComplete ? "Show Results" : "Final Jeopardy";
+  endButton.classList.toggle("results-ready", state.finalComplete);
+  endButton.textContent = state.finalComplete ? "Results" : "Show Winner";
+}
+
+function renderJourneyMeter() {
+  const stages = gameData.progressStages;
+  const totalClues = getTotalClues();
+  const progressRatio = totalClues ? state.usedClues.size / totalClues : 0;
+  const activeStage = Math.min(stages.length - 1, Math.floor(progressRatio * stages.length));
+  journeyFill.style.width = `${Math.round(progressRatio * 100)}%`;
+  journeyStages.textContent = stages[activeStage];
+  journeyMeter.setAttribute("aria-label", `World Food Safety Day progress journey. Current stage: ${stages[activeStage]}.`);
+}
+
+function eligibleChallengeClueIds() {
+  const ids = [];
+  gameData.categories.forEach((category, categoryIndex) => {
+    category.clues.forEach((clue, clueIndex) => {
+      const id = clueId(categoryIndex, clueIndex);
+      if (clue.value >= 300 && !state.usedClues.has(id)) {
+        ids.push(id);
+      }
+    });
+  });
+  return ids;
+}
+
+function seedChallengeClue() {
+  if (!state.challengeEnabled) {
+    state.challengeClueId = null;
+    return;
+  }
+  const eligibleIds = eligibleChallengeClueIds();
+  state.challengeClueId = eligibleIds.length
+    ? eligibleIds[Math.floor(Math.random() * eligibleIds.length)]
+    : null;
+}
+
+function isChallengeClue(id) {
+  return Boolean(state.challengeEnabled && state.challengeClueId && state.challengeClueId === id);
+}
+
+function currentClueScoreValue() {
+  if (!state.currentClue) return 0;
+  return state.currentClue.clue.value * (state.currentClue.isChallenge ? 2 : 1);
+}
+
+function setChallengeEnabled(enabled) {
+  state.challengeEnabled = enabled;
+  challengeToggle.checked = enabled;
+  seedChallengeClue();
 }
 
 function readSoundPreference() {
@@ -345,21 +417,24 @@ function openClue(categoryIndex, itemIndex) {
   stopTimer();
   const category = gameData.categories[categoryIndex];
   const clue = category.clues[itemIndex];
+  const id = clueId(categoryIndex, itemIndex);
+  const isChallenge = isChallengeClue(id);
   state.currentClue = {
-    id: clueId(categoryIndex, itemIndex),
+    id,
     category,
     clue,
+    isChallenge,
     scoredTeams: new Set(),
     noScore: false,
     stealOpen: false,
     resolved: false
   };
 
-  clueMeta.textContent = `${category.name} - ${clue.value} Points`;
+  clueMeta.textContent = `${category.name} - ${isChallenge ? clue.value * 2 : clue.value} Points`;
   clueStage.textContent = "Clue";
   const showCategoryPrompt = !state.seenCategoryPrompts.has(category.id);
-  categoryPrompt.hidden = !showCategoryPrompt;
-  categoryPrompt.textContent = showCategoryPrompt ? `Category lens: ${category.accent}` : "";
+  categoryPrompt.hidden = true;
+  renderClueStinger(category, isChallenge, showCategoryPrompt);
   state.seenCategoryPrompts.add(category.id);
   clueText.textContent = clue.clue;
   responseText.textContent = clue.response;
@@ -395,6 +470,9 @@ function revealClue() {
 function markCurrentUsed() {
   if (!state.currentClue) return;
   state.usedClues.add(state.currentClue.id);
+  if (state.currentClue.id === state.challengeClueId) {
+    state.challengeClueId = null;
+  }
   renderBoard();
 }
 
@@ -402,9 +480,12 @@ function animateScore(teamIndex, multiplier) {
   const cards = scoreboard.querySelectorAll(".team-card");
   const card = cards[teamIndex];
   if (!card) return;
-  card.classList.remove("score-up", "score-down");
+  card.classList.remove("score-up", "score-down", "score-celebrate");
   void card.offsetWidth;
   card.classList.add(multiplier > 0 ? "score-up" : "score-down");
+  if (multiplier > 0) {
+    card.classList.add("score-celebrate");
+  }
 }
 
 function applyScore(multiplier) {
@@ -417,7 +498,7 @@ function applyScore(multiplier) {
   ) return;
   playSound(multiplier > 0 ? "correct" : "incorrect");
   const team = state.teams[teamIndex];
-  const value = state.currentClue.clue.value;
+  const value = currentClueScoreValue();
   team.score += value * multiplier;
   state.currentClue.scoredTeams.add(teamIndex);
   state.activeTeam = teamIndex;
@@ -462,6 +543,9 @@ function updateScoreButtons() {
   const noScoreApplied = Boolean(state.currentClue?.noScore);
   const resolved = Boolean(state.currentClue?.resolved);
   const stealPending = Boolean(state.currentClue?.stealOpen && !resolved);
+  const scoreValue = currentClueScoreValue();
+  correctButton.textContent = scoreValue ? `Correct +${scoreValue}` : "Correct +";
+  incorrectButton.textContent = scoreValue ? `Incorrect -${scoreValue}` : "Incorrect -";
   correctButton.disabled = !revealed || alreadyScored || noScoreApplied || resolved;
   incorrectButton.disabled = !revealed || alreadyScored || noScoreApplied || resolved;
   noScoreButton.disabled = !revealed || noScoreApplied || resolved;
@@ -478,6 +562,9 @@ function resetGame() {
   state.activeTeam = 0;
   state.usedClues.clear();
   state.seenCategoryPrompts.clear();
+  state.challengeEnabled = true;
+  challengeToggle.checked = true;
+  seedChallengeClue();
   state.finalScoredTeams.clear();
   state.finalComplete = false;
   updateFinalButton();
@@ -586,6 +673,8 @@ function renderRules() {
 }
 
 function renderHostNotes() {
+  challengeToggleLabel.textContent = gameData.challengeClue.label;
+  challengeToggleDescription.textContent = gameData.challengeClue.description;
   hostScriptList.innerHTML = gameData.hostNotes
     .map((note) => `
       <article class="host-note-card">
@@ -602,6 +691,18 @@ function renderHostNotes() {
       </article>
     `)
     .join("");
+}
+
+function renderClueStinger(category, isChallenge, showCategoryPrompt) {
+  clueStinger.hidden = !(isChallenge || showCategoryPrompt);
+  clueStinger.classList.toggle("challenge", isChallenge);
+  if (clueStinger.hidden) return;
+
+  stingerEyebrow.textContent = isChallenge ? gameData.challengeClue.label : "Category Lens";
+  stingerTitle.textContent = category.name;
+  stingerText.textContent = isChallenge
+    ? `${category.accent} This clue is worth double.`
+    : category.accent;
 }
 
 function resetTimerDisplay() {
@@ -682,6 +783,10 @@ function renderEndScreen() {
   finalScoreList.innerHTML = ranked
     .map((team, index) => `<div style="--score-index: ${index};"><span>${team.name}</span><strong>${formatScore(team.score)}</strong></div>`)
     .join("");
+  pledgeCard.innerHTML = `
+    <span>${gameData.pledge.title}</span>
+    <p>${gameData.pledge.text}</p>
+  `;
   debriefTakeaways.innerHTML = gameData.debriefTakeaways
     .map((takeaway) => `
       <article>
@@ -767,10 +872,11 @@ function bindEvents() {
   document.getElementById("closeRulesButton").addEventListener("click", () => closeDialog(rulesDialog));
   document.getElementById("hostNotesButton").addEventListener("click", (event) => showDialog(hostNotesDialog, event.currentTarget));
   document.getElementById("closeHostNotesIcon").addEventListener("click", () => closeDialog(hostNotesDialog));
+  challengeToggle.addEventListener("change", () => setChallengeEnabled(challengeToggle.checked));
   document.getElementById("resetButton").addEventListener("click", resetGame);
   document.getElementById("nextTeamButton").addEventListener("click", nextTeam);
   finalButton.addEventListener("click", openFinal);
-  document.getElementById("endButton").addEventListener("click", (event) => {
+  endButton.addEventListener("click", (event) => {
     if (!state.finalComplete && !window.confirm("Final Jeopardy is not complete. Show current scores anyway?")) {
       return;
     }
@@ -832,6 +938,7 @@ function init() {
   gameTheme.textContent = gameData.theme;
   renderRules();
   renderHostNotes();
+  seedChallengeClue();
   renderScoreboard();
   renderTeamSelect();
   renderBoard();

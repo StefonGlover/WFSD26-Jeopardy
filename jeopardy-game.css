@@ -280,6 +280,20 @@ button:disabled {
   animation: scoreDown 0.7s ease-out;
 }
 
+.team-card.score-celebrate::after {
+  content: "";
+  position: absolute;
+  inset: -18px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 26%, rgba(255, 209, 92, 0.85) 0 3px, transparent 4px),
+    radial-gradient(circle at 72% 18%, rgba(255, 255, 255, 0.8) 0 2px, transparent 3px),
+    radial-gradient(circle at 82% 72%, rgba(244, 0, 0, 0.9) 0 3px, transparent 4px),
+    linear-gradient(115deg, transparent 18%, rgba(255, 209, 92, 0.75) 19% 22%, transparent 23%);
+  opacity: 0;
+  animation: scoreSparkle 0.72s ease-out;
+}
+
 .team-card span {
   display: block;
   margin-bottom: 8px;
@@ -371,11 +385,11 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 12px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.42);
-  padding: 10px 12px;
+  padding: 8px 12px;
   backdrop-filter: blur(10px);
 }
 
@@ -385,27 +399,93 @@ button:disabled {
   font-weight: 800;
 }
 
-.footer-status {
+.footer-support,
+.footer-flow {
   display: flex;
   align-items: center;
-  gap: 14px;
-  min-width: 0;
+  gap: 10px;
 }
 
-.footer-actions {
-  display: flex;
-  align-items: center;
+.footer-support {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.footer-flow {
   justify-content: flex-end;
-  gap: 10px;
-  flex-wrap: wrap;
   flex: 0 0 auto;
 }
 
+.footer-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
 .progress-status {
-  border-left: 1px solid rgba(255, 255, 255, 0.18);
-  padding-left: 14px;
+  border: 1px solid rgba(255, 209, 92, 0.28);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+  min-width: 70px;
+  padding: 8px 12px;
   color: var(--gold) !important;
+  font-size: 14px;
+  text-align: center;
   white-space: nowrap;
+}
+
+.journey-meter {
+  flex: 0 0 120px;
+  min-width: 120px;
+}
+
+.journey-track {
+  height: 7px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 209, 92, 0.28);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.44);
+}
+
+.journey-track span {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--coke-red), var(--gold), #fff4c7);
+  box-shadow: 0 0 18px rgba(255, 209, 92, 0.35);
+  transition: width 0.45s ease;
+}
+
+.journey-stages {
+  display: none;
+}
+
+.notes-button {
+  min-height: 38px;
+  padding: 0 14px;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.next-team-button {
+  border-color: rgba(255, 209, 92, 0.44);
+  background: rgba(255, 209, 92, 0.1);
+  color: var(--gold);
+  box-shadow: inset 0 0 0 1px rgba(255, 209, 92, 0.08);
+}
+
+.end-button {
+  color: rgba(255, 255, 255, 0.74);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.end-button.results-ready {
+  border-color: rgba(255, 209, 92, 0.52);
+  color: var(--gold);
+  background: rgba(255, 209, 92, 0.12);
+  box-shadow: 0 0 18px rgba(255, 209, 92, 0.12);
 }
 
 dialog {
@@ -680,6 +760,38 @@ dialog::backdrop {
   line-height: 1.2;
 }
 
+.challenge-toggle {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 10px;
+  align-items: center;
+  margin-top: 12px;
+  border: 1px solid rgba(255, 209, 92, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 209, 92, 0.08);
+  padding: 12px;
+}
+
+.challenge-toggle input {
+  grid-row: 1 / span 2;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--coke-red);
+}
+
+.challenge-toggle span {
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.challenge-toggle small {
+  color: rgba(255, 255, 255, 0.68);
+  font-weight: 800;
+  line-height: 1.25;
+}
+
 .host-small-note {
   margin: 12px 0 0 !important;
   color: rgba(255, 255, 255, 0.62) !important;
@@ -722,6 +834,49 @@ dialog::backdrop {
 
 .close-button {
   flex: 0 0 auto;
+}
+
+.clue-stinger {
+  margin-bottom: 12px;
+  border: 1px solid rgba(255, 209, 92, 0.36);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(244, 0, 0, 0.36), rgba(255, 209, 92, 0.1)),
+    rgba(0, 0, 0, 0.62);
+  padding: 14px 16px;
+  animation: stingerIn 0.55s ease-out both;
+}
+
+.clue-stinger.challenge {
+  border-color: rgba(255, 209, 92, 0.7);
+  box-shadow: 0 0 0 3px rgba(255, 209, 92, 0.08), 0 0 28px rgba(244, 0, 0, 0.28);
+}
+
+.clue-stinger p,
+.clue-stinger h3,
+.clue-stinger span {
+  margin: 0;
+}
+
+.clue-stinger p {
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.clue-stinger h3 {
+  margin-top: 4px;
+  color: var(--white);
+  font-size: clamp(24px, 3vw, 38px);
+  line-height: 1;
+}
+
+.clue-stinger span {
+  display: block;
+  margin-top: 6px;
+  color: rgba(255, 255, 255, 0.84);
+  font-weight: 900;
 }
 
 .clue-card {
@@ -1087,6 +1242,34 @@ dialog::backdrop {
   font-size: 26px;
 }
 
+.pledge-card {
+  margin: 0 0 14px;
+  border: 1px solid rgba(255, 209, 92, 0.34);
+  border-left: 6px solid var(--gold);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 209, 92, 0.12), rgba(244, 0, 0, 0.08)),
+    rgba(0, 0, 0, 0.28);
+  padding: 14px 16px;
+}
+
+.pledge-card span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.pledge-card p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: clamp(16px, 1.7vw, 22px);
+  font-weight: 900;
+  line-height: 1.25;
+}
+
 .debrief-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1151,6 +1334,34 @@ dialog::backdrop {
   }
 }
 
+@keyframes stingerIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes scoreSparkle {
+  0% {
+    opacity: 0;
+    transform: translateX(-22px) scale(0.96);
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(28px) scale(1.02);
+  }
+}
+
 @keyframes scoreUp {
   0% {
     transform: scale(1);
@@ -1187,7 +1398,9 @@ dialog::backdrop {
   }
 
   .winner-title-celebrate,
-  .final-score-list div {
+  .final-score-list div,
+  .clue-stinger,
+  .team-card.score-celebrate::after {
     animation: none;
   }
 
@@ -1499,16 +1712,38 @@ dialog::backdrop {
     flex-direction: column;
   }
 
-  .footer-status,
-  .footer-actions {
+  .footer-support,
+  .footer-flow,
+  .footer-status {
     width: 100%;
-    flex-direction: column;
     align-items: stretch;
   }
 
+  .footer-support {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .footer-status {
+    flex-direction: row;
+  }
+
+  .notes-button {
+    width: auto !important;
+  }
+
+  .footer-flow {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .journey-meter {
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
   .progress-status {
-    border-left: 0;
-    padding-left: 0;
+    text-align: center;
   }
 
   .host-controls,

@@ -33,15 +33,20 @@
       </section>
 
       <footer class="game-footer">
-        <div class="footer-status">
-          <p id="boardStatus">Choose a team, then choose a clue.</p>
-          <p class="progress-status" id="progressStatus">0/25 clues played</p>
+        <div class="footer-support">
+          <div class="footer-status" aria-live="polite">
+            <p class="progress-status" id="progressStatus">0/25</p>
+            <div class="journey-meter" aria-label="World Food Safety Day progress journey">
+              <div class="journey-track"><span id="journeyFill"></span></div>
+              <div class="journey-stages" id="journeyStages"></div>
+            </div>
+          </div>
+          <button class="text-button notes-button" type="button" id="hostNotesButton">Notes</button>
         </div>
-        <div class="footer-actions">
-          <button class="text-button" type="button" id="hostNotesButton">Host Notes</button>
-          <button class="text-button" type="button" id="nextTeamButton">Next Team</button>
+        <div class="footer-flow">
+          <button class="text-button next-team-button" type="button" id="nextTeamButton">Next Team →</button>
           <button class="final-button" type="button" id="finalButton">Final Jeopardy</button>
-          <button class="text-button" type="button" id="endButton">Show Winner</button>
+          <button class="text-button end-button" type="button" id="endButton">Show Winner</button>
         </div>
       </footer>
     </main>
@@ -67,6 +72,11 @@
         <div class="clue-topline">
           <p id="clueMeta">Category - 100 Points</p>
           <button class="icon-button close-button" type="button" id="closeClueButton" title="Back to board" aria-label="Back to board">x</button>
+        </div>
+        <div class="clue-stinger" id="clueStinger" hidden>
+          <p id="stingerEyebrow"></p>
+          <h3 id="stingerTitle"></h3>
+          <span id="stingerText"></span>
         </div>
         <div class="clue-card">
           <div class="clue-card-header">
@@ -177,6 +187,11 @@
           <aside class="shortcut-panel" aria-label="Keyboard shortcuts">
             <h3 class="section-title">Shortcuts</h3>
             <div class="shortcut-list" id="shortcutList"></div>
+            <label class="challenge-toggle" for="challengeToggle">
+              <input type="checkbox" id="challengeToggle" checked>
+              <span id="challengeToggleLabel">Challenge Clue</span>
+              <small id="challengeToggleDescription">Hidden on one 300-500 point tile. Correct or incorrect answers count double.</small>
+            </label>
             <p class="host-small-note">Shortcuts pause while typing team names or wagers.</p>
           </aside>
         </div>
@@ -206,6 +221,7 @@
           <p id="closeoutText">Safe Food Everywhere: Every Function Plays a Part.</p>
         </div>
         <div class="final-score-list" id="finalScoreList"></div>
+        <article class="pledge-card" id="pledgeCard"></article>
         <div class="debrief-grid" id="debriefTakeaways" aria-label="Game debrief takeaways"></div>
         <div class="dialog-actions">
           <button class="primary-button" type="button" id="closeEndButton">Back to Board</button>

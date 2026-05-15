@@ -5,6 +5,15 @@ window.JeopardyData = {
   themeStatement: "Use data, science, and shared ownership to turn food safety signals into targeted preventive action.",
   themeLens: "Theme Lens: after each response, connect the clue to how teams move from a food safety signal to a science-based solution that protects consumers.",
   closeout: "Safe Food Everywhere: Every Function Turns Signals Into Prevention.",
+  progressStages: ["Burden Signals", "Risk Ranking", "Prevention", "Verification", "Safe Food Everywhere"],
+  pledge: {
+    title: "Safe Food Everywhere Pledge",
+    text: "One action we will take: Spot signals. Rank risk. Verify prevention."
+  },
+  challengeClue: {
+    label: "Challenge Clue",
+    description: "Hidden on one 300-500 point tile. Correct or incorrect answers count double."
+  },
   debriefTakeaways: [
     { title: "Spot signals", text: "Notice complaints, records, holds, observations, and trends early." },
     { title: "Rank risk", text: "Use science and evidence to focus attention where impact could be greatest." },
@@ -32,8 +41,10 @@ window.JeopardyData = {
   },
   rules: [
     "Build 2-5 cross-functional teams and choose one active team before each clue.",
-    "Pick a category and point value. Teams get about 30 seconds to answer.",
+    "Follow the progress meter from burden signals to safe food everywhere as clues are played.",
+    "Pick a category and point value. The first clue in each category gives the host a quick theme stinger.",
     "Reveal the response, connect it to the theme lens and burden-to-solution teaching point, then score the team.",
+    "If Challenge Clue is enabled, one hidden 300-500 point tile is worth double.",
     "After a miss, the host may select another team and allow one steal.",
     "Use Final Jeopardy to close with one shared promise: protect consumers through coordinated action."
   ],
