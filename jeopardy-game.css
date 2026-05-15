@@ -29,6 +29,10 @@ body {
   margin: 0;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 button,
 input,
 select {
@@ -43,6 +47,68 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.start-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    linear-gradient(115deg, rgba(2, 2, 2, 0.9), rgba(118, 0, 0, 0.7)),
+    url("assets/generated/hero-campaign.png") center / cover;
+}
+
+.start-ribbon {
+  position: absolute;
+  width: min(92vw, 1300px);
+  height: min(32vw, 430px);
+  border: 12px solid rgba(255, 255, 255, 0.46);
+  border-radius: 50%;
+  transform: rotate(-10deg);
+  animation: ribbonDrift 8s ease-in-out infinite alternate;
+}
+
+.start-content {
+  width: min(960px, calc(100vw - 36px));
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.start-logo {
+  width: min(310px, 64vw);
+  height: auto;
+  filter: brightness(0) invert(1);
+  margin-bottom: 22px;
+}
+
+.start-content h1 {
+  margin: 0;
+  font-size: clamp(48px, 9vw, 112px);
+  line-height: 0.9;
+}
+
+.start-content p:not(.eyebrow) {
+  margin: 18px auto 28px;
+  max-width: 760px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: clamp(18px, 2.1vw, 30px);
+  font-weight: 900;
+}
+
+.start-button {
+  min-height: 58px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--white);
+  color: var(--coke-red);
+  padding: 0 28px;
+  font-weight: 900;
+  text-transform: uppercase;
+  box-shadow: var(--shadow);
+}
+
 .game-shell {
   width: min(1780px, calc(100vw - 28px));
   min-height: 100vh;
@@ -54,21 +120,34 @@ button:disabled {
 }
 
 .game-header {
-  min-height: 104px;
+  min-height: 76px;
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 22px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: clamp(16px, 2vw, 28px);
   align-items: center;
-  padding: 18px clamp(16px, 2.2vw, 32px);
+  padding: 14px clamp(16px, 2.2vw, 28px);
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(3, 3, 3, 0.8);
-  box-shadow: var(--shadow);
+  background:
+    linear-gradient(120deg, rgba(0, 0, 0, 0.88), rgba(35, 0, 0, 0.58)),
+    rgba(3, 3, 3, 0.78);
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(14px);
+  position: relative;
+  overflow: hidden;
+}
+
+.game-header::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, var(--coke-red), rgba(255, 209, 92, 0.85), transparent);
 }
 
 .brand-lockup {
-  width: 216px;
-  min-height: 76px;
+  width: 164px;
+  min-height: 52px;
   border: 2px solid currentColor;
   border-radius: 999px;
   color: var(--white);
@@ -95,8 +174,7 @@ button:disabled {
 }
 
 .logo-lockup {
-  gap: 4px;
-  padding: 11px 24px 9px;
+  padding: 7px 18px;
 }
 
 .logo-lockup::after {
@@ -104,7 +182,7 @@ button:disabled {
 }
 
 .brand-logo-image {
-  width: 160px;
+  width: 122px;
   max-width: 100%;
   height: auto;
   display: block;
@@ -127,24 +205,25 @@ button:disabled {
 }
 
 .eyebrow {
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   color: #ffd8d8;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .title-block h1 {
   margin: 0;
-  font-size: clamp(34px, 5vw, 76px);
-  line-height: 0.9;
+  font-size: clamp(28px, 3vw, 38px);
+  line-height: 1;
   letter-spacing: 0;
+  max-width: 760px;
 }
 
 .title-block p:last-child {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   color: rgba(255, 255, 255, 0.82);
-  font-size: clamp(14px, 1.45vw, 22px);
+  font-size: clamp(13px, 1.3vw, 18px);
   font-weight: 800;
 }
 
@@ -163,7 +242,7 @@ button:disabled {
 .primary-button,
 .score-button,
 .final-button {
-  min-height: 44px;
+  min-height: 42px;
   border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 8px;
   color: var(--white);
@@ -171,14 +250,32 @@ button:disabled {
 }
 
 .icon-button {
-  width: 46px;
+  width: 42px;
   padding: 0;
   background: rgba(255, 255, 255, 0.12);
   font-size: 22px;
 }
 
+.sound-toggle {
+  position: relative;
+  color: var(--gold);
+}
+
+.sound-toggle.muted {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.sound-toggle.muted::after {
+  content: "";
+  position: absolute;
+  width: 24px;
+  height: 2px;
+  background: var(--coke-red);
+  transform: rotate(-38deg);
+}
+
 .text-button {
-  padding: 0 15px;
+  padding: 0 14px;
   background: rgba(255, 255, 255, 0.1);
 }
 
@@ -227,6 +324,14 @@ button:disabled {
 .team-card.active {
   border-color: var(--gold);
   background: linear-gradient(135deg, rgba(244, 0, 0, 0.72), rgba(255, 209, 92, 0.14));
+}
+
+.team-card.score-up {
+  animation: scoreUp 0.7s ease-out;
+}
+
+.team-card.score-down {
+  animation: scoreDown 0.7s ease-out;
 }
 
 .team-card span {
@@ -295,15 +400,30 @@ button:disabled {
 }
 
 .clue-tile.used {
-  color: rgba(255, 255, 255, 0.28);
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: none;
+  position: relative;
+  color: rgba(255, 255, 255, 0.18);
+  background:
+    linear-gradient(135deg, rgba(244, 0, 0, 0.16), rgba(255, 255, 255, 0.05)),
+    rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+
+.clue-tile.used::after {
+  content: "PLAYED";
+  position: absolute;
+  inset: auto 12px 12px;
+  border: 2px solid rgba(255, 255, 255, 0.42);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: clamp(11px, 1vw, 16px);
+  letter-spacing: 0;
+  transform: rotate(-8deg);
 }
 
 .game-footer {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
 }
 
@@ -311,6 +431,12 @@ button:disabled {
   margin: 0;
   color: rgba(255, 255, 255, 0.82);
   font-weight: 800;
+}
+
+.brand-footer {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  text-transform: uppercase;
 }
 
 dialog {
@@ -431,11 +557,31 @@ dialog::backdrop {
   justify-content: center;
 }
 
+.clue-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
 .clue-label,
 .why-title {
   margin: 0 0 12px;
   color: #ffd8d8;
   font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.teaching-tag {
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 209, 92, 0.65);
+  border-radius: 999px;
+  background: rgba(255, 209, 92, 0.14);
+  color: var(--gold);
+  padding: 8px 12px;
+  font-size: 12px;
   font-weight: 900;
   text-transform: uppercase;
 }
@@ -469,12 +615,100 @@ dialog::backdrop {
   line-height: 1.35;
 }
 
+.bridge-strip {
+  margin-top: 22px;
+  border-left: 6px solid var(--coke-red);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 14px 16px;
+}
+
+.bridge-strip span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.bridge-strip p {
+  margin: 0;
+  color: var(--white);
+  font-size: clamp(15px, 1.5vw, 20px);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.risk-card {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.risk-card article {
+  min-height: 96px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.34);
+  padding: 13px 14px;
+}
+
+.risk-card span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.risk-card p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: clamp(14px, 1.3vw, 18px);
+  font-weight: 800;
+  line-height: 1.28;
+}
+
 .host-controls {
   display: grid;
-  grid-template-columns: minmax(150px, 210px) minmax(160px, 220px) repeat(5, auto);
+  grid-template-columns: minmax(120px, 160px) minmax(150px, 200px) auto minmax(72px, auto) repeat(5, auto);
   gap: 10px;
   align-items: end;
   margin-top: 14px;
+}
+
+.timer-button,
+.timer-display {
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 209, 92, 0.42);
+  color: var(--gold);
+  font-weight: 900;
+}
+
+.timer-button {
+  background: rgba(255, 209, 92, 0.12);
+  padding: 0 12px;
+}
+
+.timer-display {
+  display: inline-grid;
+  place-items: center;
+  padding: 0 12px;
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.timer-display.warning {
+  color: var(--white);
+  background: rgba(244, 0, 0, 0.64);
+}
+
+.timer-display.done {
+  color: var(--white);
+  background: var(--coke-red);
 }
 
 .host-note {
@@ -512,6 +746,79 @@ dialog::backdrop {
   justify-content: end;
 }
 
+.end-panel {
+  background:
+    linear-gradient(145deg, rgba(244, 0, 0, 0.3), rgba(0, 0, 0, 0.08)),
+    #111;
+}
+
+.final-score-list {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.final-score-list div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 14px;
+}
+
+.final-score-list span {
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.final-score-list strong {
+  color: var(--gold);
+  font-size: 26px;
+}
+
+@keyframes ribbonDrift {
+  from {
+    transform: translateX(-2%) rotate(-10deg);
+  }
+
+  to {
+    transform: translateX(2%) rotate(-7deg);
+  }
+}
+
+@keyframes scoreUp {
+  0% {
+    transform: scale(1);
+  }
+
+  35% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 4px rgba(12, 122, 77, 0.45);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes scoreDown {
+  0% {
+    transform: scale(1);
+  }
+
+  35% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 4px rgba(244, 0, 0, 0.45);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
 @media (max-width: 980px) {
   .game-header {
     grid-template-columns: 1fr;
@@ -531,6 +838,10 @@ dialog::backdrop {
 
   .host-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .risk-card {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -552,13 +863,17 @@ dialog::backdrop {
   .dialog-actions,
   .header-actions {
     align-items: stretch;
-    flex-direction: column;
   }
 
   .game-footer .final-button,
+  .game-footer .text-button,
   .header-actions > *,
   .dialog-actions > * {
     width: 100%;
+  }
+
+  .game-footer {
+    grid-template-columns: 1fr;
   }
 
   .host-controls,

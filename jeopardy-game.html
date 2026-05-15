@@ -7,12 +7,22 @@
     <link rel="stylesheet" href="jeopardy-game.css">
   </head>
   <body>
+    <section class="start-screen" id="startScreen" aria-labelledby="startTitle">
+      <div class="start-ribbon" aria-hidden="true"></div>
+      <div class="start-content">
+        <img class="start-logo" src="assets/generated/coca-cola-logo.svg" alt="Coca-Cola">
+        <p class="eyebrow">World Food Safety Day 2026</p>
+        <h1 id="startTitle">Safe Food Everywhere Jeopardy</h1>
+        <p>From burden to solutions - safe food everywhere.</p>
+        <button class="start-button" type="button" id="startButton">Start Game</button>
+      </div>
+    </section>
+
     <main class="game-shell">
       <header class="game-header">
-        <a class="brand-lockup logo-lockup" href="index.html" aria-label="Back to Coca-Cola QSE Passport Fair">
+        <div class="brand-lockup logo-lockup" aria-label="Coca-Cola">
           <img class="brand-logo-image" src="assets/generated/coca-cola-logo.svg" alt="Coca-Cola">
-          <span class="brand-meta">QSE Jeopardy</span>
-        </a>
+        </div>
         <div class="title-block">
           <p class="eyebrow" id="gameSubtitle">World Food Safety Day 2026</p>
           <h1 id="gameTitle">Safe Food Everywhere Jeopardy</h1>
@@ -20,6 +30,7 @@
         </div>
         <div class="header-actions">
           <button class="icon-button" type="button" id="rulesButton" title="Show rules" aria-label="Show rules">?</button>
+          <button class="icon-button sound-toggle muted" type="button" id="soundButton" title="Unmute sounds" aria-label="Unmute sounds" aria-pressed="false">♪</button>
           <button class="text-button" type="button" id="setupButton">Teams</button>
           <button class="text-button danger" type="button" id="resetButton">Reset</button>
         </div>
@@ -33,7 +44,9 @@
 
       <footer class="game-footer">
         <button class="final-button" type="button" id="finalButton">Final Jeopardy</button>
+        <button class="text-button" type="button" id="endButton">End Game</button>
         <p id="boardStatus">Choose a team, then choose a clue.</p>
+        <p class="brand-footer" id="brandFooter"></p>
       </footer>
     </main>
 
@@ -60,18 +73,41 @@
           <button class="icon-button close-button" type="button" id="closeClueButton" title="Back to board" aria-label="Back to board">x</button>
         </div>
         <div class="clue-card">
-          <p class="clue-label" id="clueStage">Clue</p>
+          <div class="clue-card-header">
+            <p class="clue-label" id="clueStage">Clue</p>
+            <span class="teaching-tag" id="teachingTag">Data</span>
+          </div>
           <h2 id="clueText"></h2>
           <div class="response-block" id="responseBlock" hidden>
             <p class="clue-label">Correct Response</p>
             <h3 id="responseText"></h3>
             <p class="why-title">Why It Matters</p>
             <p id="whyText"></p>
+            <div class="bridge-strip">
+              <span>Burden to Solution</span>
+              <p id="bridgeText"></p>
+            </div>
+            <div class="risk-card" aria-label="Risk to solution card">
+              <article>
+                <span>Signal</span>
+                <p id="riskSignal"></p>
+              </article>
+              <article>
+                <span>Risk</span>
+                <p id="riskConcern"></p>
+              </article>
+              <article>
+                <span>Action</span>
+                <p id="riskAction"></p>
+              </article>
+            </div>
           </div>
         </div>
         <div class="host-controls">
           <label for="modalTeamSelect">Scoring team</label>
           <select id="modalTeamSelect"></select>
+          <button class="timer-button" type="button" id="timerButton">Start 30s</button>
+          <output class="timer-display" id="timerDisplay" aria-live="polite">:30</output>
           <button class="primary-button" type="button" id="revealButton">Reveal Response</button>
           <button class="score-button positive" type="button" id="correctButton" disabled>Correct +</button>
           <button class="score-button negative" type="button" id="incorrectButton" disabled>Incorrect -</button>
@@ -97,6 +133,24 @@
             <h3 id="finalResponse"></h3>
             <p class="why-title">Why It Matters</p>
             <p id="finalWhy"></p>
+            <div class="bridge-strip">
+              <span>Burden to Solution</span>
+              <p id="finalBridge"></p>
+            </div>
+            <div class="risk-card" aria-label="Final risk to solution card">
+              <article>
+                <span>Signal</span>
+                <p id="finalRiskSignal"></p>
+              </article>
+              <article>
+                <span>Risk</span>
+                <p id="finalRiskConcern"></p>
+              </article>
+              <article>
+                <span>Action</span>
+                <p id="finalRiskAction"></p>
+              </article>
+            </div>
           </div>
         </div>
         <div class="host-controls final-controls">
@@ -115,6 +169,20 @@
         <ol class="rules-list" id="rulesList"></ol>
         <div class="dialog-actions">
           <button class="primary-button" type="button" id="closeRulesButton">Go to Game Board</button>
+        </div>
+      </section>
+    </dialog>
+
+    <dialog class="setup-dialog" id="endDialog">
+      <section class="setup-panel end-panel">
+        <div>
+          <p class="eyebrow">Game Complete</p>
+          <h2 id="winnerTitle">Winner</h2>
+          <p id="closeoutText">Safe Food Everywhere: Every Function Plays a Part.</p>
+        </div>
+        <div class="final-score-list" id="finalScoreList"></div>
+        <div class="dialog-actions">
+          <button class="primary-button" type="button" id="closeEndButton">Back to Board</button>
         </div>
       </section>
     </dialog>
