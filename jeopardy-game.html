@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Safe Food Everywhere Jeopardy</title>
+    <link rel="stylesheet" href="jeopardy-game.css">
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="game-header">
+        <a class="brand-lockup logo-lockup" href="index.html" aria-label="Back to Coca-Cola QSE Passport Fair">
+          <img class="brand-logo-image" src="assets/generated/coca-cola-logo.svg" alt="Coca-Cola">
+          <span class="brand-meta">QSE Jeopardy</span>
+        </a>
+        <div class="title-block">
+          <p class="eyebrow" id="gameSubtitle">World Food Safety Day 2026</p>
+          <h1 id="gameTitle">Safe Food Everywhere Jeopardy</h1>
+          <p id="gameTheme">From Burden to Solutions - Safe Food Everywhere</p>
+        </div>
+        <div class="header-actions">
+          <button class="icon-button" type="button" id="rulesButton" title="Show rules" aria-label="Show rules">?</button>
+          <button class="text-button" type="button" id="setupButton">Teams</button>
+          <button class="text-button danger" type="button" id="resetButton">Reset</button>
+        </div>
+      </header>
+
+      <section class="scoreboard" id="scoreboard" aria-label="Team scores"></section>
+
+      <section class="board-wrap" aria-label="Game board">
+        <div class="board" id="gameBoard"></div>
+      </section>
+
+      <footer class="game-footer">
+        <button class="final-button" type="button" id="finalButton">Final Jeopardy</button>
+        <p id="boardStatus">Choose a team, then choose a clue.</p>
+      </footer>
+    </main>
+
+    <dialog class="setup-dialog" id="setupDialog">
+      <form method="dialog" class="setup-panel" id="setupForm">
+        <div>
+          <p class="eyebrow">Team Setup</p>
+          <h2>Build Teams</h2>
+          <p>Use two to five teams. Names can be changed anytime before or during play.</p>
+        </div>
+        <div class="team-fields" id="teamFields"></div>
+        <div class="dialog-actions">
+          <button class="text-button" type="button" id="addTeamButton">Add Team</button>
+          <button class="text-button" type="button" id="removeTeamButton">Remove Team</button>
+          <button class="primary-button" value="save">Save Teams</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="clue-dialog" id="clueDialog">
+      <section class="clue-panel" aria-live="polite">
+        <div class="clue-topline">
+          <p id="clueMeta">Category - 100 Points</p>
+          <button class="icon-button close-button" type="button" id="closeClueButton" title="Back to board" aria-label="Back to board">x</button>
+        </div>
+        <div class="clue-card">
+          <p class="clue-label" id="clueStage">Clue</p>
+          <h2 id="clueText"></h2>
+          <div class="response-block" id="responseBlock" hidden>
+            <p class="clue-label">Correct Response</p>
+            <h3 id="responseText"></h3>
+            <p class="why-title">Why It Matters</p>
+            <p id="whyText"></p>
+          </div>
+        </div>
+        <div class="host-controls">
+          <label for="modalTeamSelect">Scoring team</label>
+          <select id="modalTeamSelect"></select>
+          <button class="primary-button" type="button" id="revealButton">Reveal Response</button>
+          <button class="score-button positive" type="button" id="correctButton" disabled>Correct +</button>
+          <button class="score-button negative" type="button" id="incorrectButton" disabled>Incorrect -</button>
+          <button class="text-button" type="button" id="noScoreButton" disabled>No Score</button>
+          <button class="text-button" type="button" id="backButton">Back to Board</button>
+        </div>
+        <p class="host-note" id="hostNote">Teams have about 30 seconds. The host may allow one steal after a miss.</p>
+      </section>
+    </dialog>
+
+    <dialog class="clue-dialog" id="finalDialog">
+      <section class="clue-panel final-panel" aria-live="polite">
+        <div class="clue-topline">
+          <p>Final Jeopardy - <span id="finalCategory">One Team, One Promise</span></p>
+          <button class="icon-button close-button" type="button" id="closeFinalButton" title="Back to board" aria-label="Back to board">x</button>
+        </div>
+        <div class="clue-card">
+          <p class="clue-label">Final Clue</p>
+          <h2 id="finalClue"></h2>
+          <div class="wager-grid" id="wagerGrid"></div>
+          <div class="response-block" id="finalResponseBlock" hidden>
+            <p class="clue-label">Strong Response Includes</p>
+            <h3 id="finalResponse"></h3>
+            <p class="why-title">Why It Matters</p>
+            <p id="finalWhy"></p>
+          </div>
+        </div>
+        <div class="host-controls final-controls">
+          <button class="primary-button" type="button" id="revealFinalButton">Reveal Final Response</button>
+          <button class="text-button" type="button" id="finalBackButton">Back to Board</button>
+        </div>
+      </section>
+    </dialog>
+
+    <dialog class="setup-dialog" id="rulesDialog">
+      <section class="setup-panel">
+        <div>
+          <p class="eyebrow">How to Play</p>
+          <h2>Classic Jeopardy Format</h2>
+        </div>
+        <ol class="rules-list" id="rulesList"></ol>
+        <div class="dialog-actions">
+          <button class="primary-button" type="button" id="closeRulesButton">Go to Game Board</button>
+        </div>
+      </section>
+    </dialog>
+
+    <script src="jeopardy-data.js"></script>
+    <script src="jeopardy-game.js"></script>
+  </body>
+</html>
