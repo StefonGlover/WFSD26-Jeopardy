@@ -76,6 +76,7 @@ const rulesDialog = document.getElementById("rulesDialog");
 const rulesList = document.getElementById("rulesList");
 const rulesThemeLens = document.getElementById("rulesThemeLens");
 const endDialog = document.getElementById("endDialog");
+const winnerCelebration = document.getElementById("winnerCelebration");
 const winnerTitle = document.getElementById("winnerTitle");
 const closeoutText = document.getElementById("closeoutText");
 const finalScoreList = document.getElementById("finalScoreList");
@@ -640,14 +641,46 @@ function startTimer() {
   }, 1000);
 }
 
+function renderWinnerCelebration() {
+  winnerCelebration.innerHTML = "";
+  winnerTitle.classList.remove("winner-title-celebrate");
+  void winnerTitle.offsetWidth;
+  winnerTitle.classList.add("winner-title-celebrate");
+
+  const colors = ["#f40000", "#ffffff", "#ffd15c", "#b00000"];
+  const shapes = ["ribbon", "square", "dash"];
+  const particles = Array.from({ length: 46 }, (_, index) => {
+    const side = index % 2 === 0 ? -1 : 1;
+    return {
+      color: colors[index % colors.length],
+      shape: shapes[index % shapes.length],
+      x: 12 + ((index * 17) % 76),
+      dx: side * (26 + ((index * 11) % 42)),
+      delay: ((index * 37) % 900) / 1000,
+      duration: 2.1 + ((index * 13) % 90) / 100,
+      rotate: side * (90 + ((index * 29) % 230))
+    };
+  });
+
+  winnerCelebration.innerHTML = particles
+    .map((particle) => `
+      <span
+        class="winner-confetti ${particle.shape}"
+        style="--x: ${particle.x}; --dx: ${particle.dx}px; --delay: ${particle.delay}s; --duration: ${particle.duration}s; --rotate: ${particle.rotate}deg; --confetti-color: ${particle.color};"
+      ></span>
+    `)
+    .join("");
+}
+
 function renderEndScreen() {
   const ranked = [...state.teams].sort((a, b) => b.score - a.score);
   const highScore = ranked[0]?.score ?? 0;
   const winners = ranked.filter((team) => team.score === highScore).map((team) => team.name);
+  renderWinnerCelebration();
   winnerTitle.textContent = winners.length > 1 ? `Winners: ${winners.join(" + ")}` : `Winner: ${winners[0]}`;
   closeoutText.textContent = gameData.closeout;
   finalScoreList.innerHTML = ranked
-    .map((team) => `<div><span>${team.name}</span><strong>${formatScore(team.score)}</strong></div>`)
+    .map((team, index) => `<div style="--score-index: ${index};"><span>${team.name}</span><strong>${formatScore(team.score)}</strong></div>`)
     .join("");
   debriefTakeaways.innerHTML = gameData.debriefTakeaways
     .map((takeaway) => `

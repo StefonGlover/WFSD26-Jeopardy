@@ -978,9 +978,71 @@ dialog::backdrop {
 }
 
 .end-panel {
+  position: relative;
+  overflow: hidden;
   background:
     linear-gradient(145deg, rgba(244, 0, 0, 0.3), rgba(0, 0, 0, 0.08)),
     #111;
+}
+
+.end-panel > :not(.winner-celebration) {
+  position: relative;
+  z-index: 1;
+}
+
+.winner-celebration {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.winner-celebration::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 42%;
+  background:
+    radial-gradient(circle at 20% 25%, rgba(255, 209, 92, 0.28), transparent 28%),
+    radial-gradient(circle at 78% 18%, rgba(244, 0, 0, 0.3), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent);
+  opacity: 0;
+  animation: winnerGlow 2.8s ease-out forwards;
+}
+
+.winner-confetti {
+  position: absolute;
+  top: -18px;
+  left: calc(var(--x) * 1%);
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--confetti-color);
+  opacity: 0;
+  transform: translate3d(0, 0, 0) rotate(0deg);
+  animation: cokeConfetti var(--duration) cubic-bezier(0.16, 0.78, 0.32, 1) var(--delay) forwards;
+}
+
+.winner-confetti.ribbon {
+  width: 6px;
+  height: 22px;
+  border-radius: 999px;
+}
+
+.winner-confetti.square {
+  width: 9px;
+  height: 9px;
+}
+
+.winner-confetti.dash {
+  width: 18px;
+  height: 5px;
+  border-radius: 999px;
+}
+
+.winner-title-celebrate {
+  animation: winnerTitlePop 1.2s ease-out both;
 }
 
 .final-score-list {
@@ -998,6 +1060,9 @@ dialog::backdrop {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
   padding: 14px;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: scoreReveal 0.5s ease-out calc(var(--score-index) * 0.08s + 0.25s) forwards;
 }
 
 .final-score-list span {
@@ -1015,6 +1080,63 @@ dialog::backdrop {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin: 0 0 20px;
+}
+
+@keyframes winnerGlow {
+  0% {
+    opacity: 0;
+  }
+
+  20% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.38;
+  }
+}
+
+@keyframes cokeConfetti {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--dx), 260px, 0) rotate(var(--rotate));
+  }
+}
+
+@keyframes winnerTitlePop {
+  0% {
+    color: var(--white);
+    text-shadow: 0 0 0 rgba(255, 209, 92, 0);
+    transform: scale(0.96);
+  }
+
+  42% {
+    color: var(--gold);
+    text-shadow: 0 0 28px rgba(255, 209, 92, 0.55);
+    transform: scale(1.035);
+  }
+
+  100% {
+    color: var(--white);
+    text-shadow: 0 0 18px rgba(244, 0, 0, 0.28);
+    transform: scale(1);
+  }
+}
+
+@keyframes scoreReveal {
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes scoreUp {
@@ -1044,6 +1166,27 @@ dialog::backdrop {
 
   100% {
     transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .winner-celebration {
+    display: none;
+  }
+
+  .winner-title-celebrate,
+  .final-score-list div {
+    animation: none;
+  }
+
+  .winner-title-celebrate {
+    color: var(--gold);
+    text-shadow: 0 0 18px rgba(255, 209, 92, 0.34);
+  }
+
+  .final-score-list div {
+    opacity: 1;
+    transform: none;
   }
 }
 
