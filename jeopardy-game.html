@@ -33,7 +33,9 @@
         <p id="boardStatus">Team 1 is choosing.</p>
       </section>
 
-      <section class="board-wrap" aria-label="Game board">
+      <section class="board-wrap" aria-label="Game board" data-scroll-hint="Scroll sideways for more categories">
+        <div class="mobile-category-nav" id="mobileCategoryNav" aria-label="Mobile category selector"></div>
+        <div class="mobile-board" id="mobileBoard" aria-label="Selected category clues"></div>
         <div class="board" id="gameBoard"></div>
       </section>
 
@@ -72,7 +74,7 @@
     </dialog>
 
     <dialog class="clue-dialog" id="clueDialog" aria-labelledby="clueMeta">
-      <section class="clue-panel" data-clue-stage="clue" aria-live="polite">
+      <section class="clue-panel" data-clue-stage="clue">
         <div class="clue-topline">
           <p id="clueMeta">Category - 100 Points</p>
           <button class="icon-button close-button" type="button" id="closeClueButton" title="Back to board" aria-label="Back to board">x</button>
@@ -92,6 +94,7 @@
           <div class="response-block" id="responseBlock" hidden>
             <p class="clue-label">Correct Response</p>
             <h3 id="responseText"></h3>
+            <div class="acceptance-strip" id="acceptanceStrip" hidden></div>
             <p class="why-title">Why It Matters</p>
             <p id="whyText"></p>
             <div class="glossary-strip" id="glossaryStrip" aria-label="World Food Safety Day theme glossary"></div>
@@ -131,7 +134,7 @@
     </dialog>
 
     <dialog class="clue-dialog" id="finalDialog" aria-labelledby="finalMeta">
-      <section class="clue-panel final-panel" data-final-stage="wagers" aria-live="polite">
+      <section class="clue-panel final-panel" data-final-stage="wagers">
         <div class="clue-topline">
           <p id="finalMeta">Final Jeopardy - <span id="finalCategory">One Team, One Promise</span></p>
           <button class="icon-button close-button" type="button" id="closeFinalButton" title="Back to board" aria-label="Back to board">x</button>
@@ -150,6 +153,11 @@
           <div class="response-block" id="finalResponseBlock" hidden>
             <p class="clue-label">Strong Response Includes</p>
             <h3 id="finalResponse"></h3>
+            <div class="acceptance-strip" id="finalAcceptanceStrip" hidden></div>
+            <div class="final-rubric" id="finalRubric" hidden>
+              <p class="clue-label">Scoring Rubric</p>
+              <div id="finalRubricList"></div>
+            </div>
             <p class="why-title">Why It Matters</p>
             <p id="finalWhy"></p>
             <div class="glossary-strip" id="finalGlossaryStrip" aria-label="Final World Food Safety Day theme glossary"></div>

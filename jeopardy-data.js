@@ -54,11 +54,13 @@ window.JeopardyData = {
       name: "Food Safety Basics",
       shortName: "Food Safety Basics",
       accent: "Every check protects someone.",
+      visual: { color: "#d70000", image: "assets/generated/hero-campaign.png" },
       clues: [
         {
           value: 100,
           clue: "The first person protected by every food safety decision, record, hold, or escalation.",
           response: "The consumer.",
+          hostAccepts: "Accept consumer, customer, end user, guest, or person drinking/using the product. Prompt if the answer names only an internal team.",
           why: "Consumer protection is the reason food safety work matters, from routine checks to urgent decisions.",
           tag: "Trust",
           bridge: "Burden becomes solution when every team connects daily decisions to consumer protection.",
@@ -68,6 +70,7 @@ window.JeopardyData = {
           value: 200,
           clue: "This is the difference between 'we did the check' and 'we can prove the check happened.'",
           response: "Documentation or records.",
+          hostAccepts: "Accept records, documentation, evidence, signoff, verification record, completed log, or traceable proof.",
           why: "Records give teams evidence that a control was completed, reviewed, and traceable when decisions need to move quickly.",
           tag: "Traceability",
           bridge: "Reliable records turn uncertainty into evidence-based action.",
@@ -77,6 +80,7 @@ window.JeopardyData = {
           value: 300,
           clue: "Name the three major hazard types teams should be able to recognize in food and beverage operations.",
           response: "Biological, chemical, and physical hazards.",
+          hostAccepts: "Accept biological, chemical, and physical. If local programs treat allergens separately, accept allergen as an additional major hazard class.",
           why: "Clear hazard language helps teams identify risk consistently and choose the right control.",
           tag: "Training",
           bridge: "Shared hazard awareness helps prevent issues before they reach consumers.",
@@ -93,8 +97,9 @@ window.JeopardyData = {
         },
         {
           value: 500,
-          clue: "A corrective action fixes today's issue, but this must be reduced and verified before the problem is truly solved.",
+          clue: "A corrective action fixes today's issue, but what future risk must be reduced and verified before the problem is truly solved?",
           response: "The risk or chance of recurrence.",
+          hostAccepts: "Accept recurrence risk, repeat failure risk, likelihood the problem happens again, or effectiveness of the corrective action.",
           why: "Closing an action is not enough; teams need evidence that the issue is less likely to happen again.",
           tag: "Prevention",
           bridge: "Prevention turns a one-time fix into a verified reduction in future risk.",
@@ -107,11 +112,13 @@ window.JeopardyData = {
       name: "Spot the Risk",
       shortName: "Spot the Risk",
       accent: "Small observations can prevent bigger issues.",
+      visual: { color: "#ff6b35", image: "assets/generated/station-spot-risk.png" },
       clues: [
         {
           value: 100,
-          clue: "A shared beverage area is out of soap and towels. What is the food safety concern?",
+          clue: "A handwash station near a production, lab, or sample area is out of soap and towels. What is the food safety concern?",
           response: "Poor hand hygiene and contamination risk.",
+          hostAccepts: "Accept hand hygiene breakdown, people contamination risk, cross-contamination, or failure to support hygienic practices.",
           why: "Basic hygiene resources help prevent people from carrying contamination into shared food or beverage spaces.",
           tag: "Prevention",
           bridge: "A small observation becomes a solution when it is reported and corrected immediately.",
@@ -121,6 +128,7 @@ window.JeopardyData = {
           value: 200,
           clue: "A receiving door is left open during unloading. Name two risks this can create.",
           response: "Pests, debris, unauthorized access, or environmental exposure.",
+          hostAccepts: "Accept any two relevant risks: pests, debris, dust, temperature exposure, weather, unauthorized access, or environmental contamination.",
           why: "Open doors can create preventable exposure during an otherwise routine receiving activity.",
           tag: "Prevention",
           bridge: "Risk awareness helps teams focus attention where exposure can enter the system.",
@@ -130,6 +138,7 @@ window.JeopardyData = {
           value: 300,
           clue: "An urgent shipment arrives with an expired supplier document. What should happen before use?",
           response: "Hold or block use, verify requirements, obtain current approval/documentation, and escalate.",
+          hostAccepts: "Correct answers should include blocking/holding use plus verification or escalation. Prompt if the answer skips the hold/block step.",
           why: "Urgency should not override evidence that a supplier, material, or package is approved for use.",
           tag: "Targeted Action",
           bridge: "A targeted hold protects consumers while the team gets the facts needed to decide.",
@@ -139,6 +148,7 @@ window.JeopardyData = {
           value: 400,
           clue: "A chemical container is unlabeled near product-contact tools. Name the hazard type and one control.",
           response: "Chemical hazard; label, segregate, store correctly, and verify.",
+          hostAccepts: "Accept chemical hazard plus one strong control: identify/label, segregate, remove from area, store correctly, escalate, or verify disposition.",
           why: "Unidentified chemicals near product-contact items create a preventable contamination risk.",
           tag: "HACCP",
           bridge: "A clear control turns a hazard from burden into managed risk.",
@@ -147,11 +157,12 @@ window.JeopardyData = {
         {
           value: 500,
           clue: "Two instructions conflict: an email says one thing, the controlled document says another. What should the team do and why?",
-          response: "Follow the controlled document and escalate the conflict because uncontrolled instructions can create inconsistent risk decisions.",
-          why: "Controlled instructions protect teams from outdated, informal, or conflicting direction.",
+          response: "Stop, verify the current approved instruction with the process owner or QA, follow the controlled process, and escalate/document the conflict.",
+          hostAccepts: "Accept answers that avoid improvising and include verification with QA/process owner plus escalation. Also accept urgent approved hold/deviation instructions when documented through the proper channel.",
+          why: "Controlled instructions protect teams from outdated, informal, or conflicting direction, while urgent safety decisions still need approved documentation.",
           tag: "Training",
           bridge: "One trusted source of truth helps teams solve consistently across locations and functions.",
-          riskCard: { signal: "Conflicting instruction", risk: "Wrong or inconsistent action", action: "Use controlled documents and escalate conflicts" }
+          riskCard: { signal: "Conflicting instruction", risk: "Wrong or inconsistent action", action: "Verify the approved path and escalate conflicts" }
         }
       ]
     },
@@ -160,11 +171,13 @@ window.JeopardyData = {
       name: "Signals to Solutions",
       shortName: "Signals to Solutions",
       accent: "Notice the clue. Solve the pattern.",
+      visual: { color: "#0c7a4d", image: "assets/generated/station-red-flag.png" },
       clues: [
         {
           value: 100,
           clue: "A repeated complaint, hold, expired document, or unusual record trend is this: an early clue that something may need attention.",
           response: "A food safety signal or risk signal.",
+          hostAccepts: "Accept signal, warning sign, trend, leading indicator, risk signal, or early indicator.",
           why: "Signals help teams notice risk before it becomes a larger consumer, customer, or business burden.",
           tag: "Data",
           bridge: "Weak signals become solutions when teams notice them early and act on evidence.",
@@ -174,6 +187,7 @@ window.JeopardyData = {
           value: 200,
           clue: "When several signals point to the same supplier, material, package, or process, teams should do this before jumping to a fix.",
           response: "Look for the pattern and assess or rank the risk.",
+          hostAccepts: "Accept pattern analysis, trend review, risk assessment, risk ranking, or prioritizing based on evidence before choosing the fix.",
           why: "Pattern recognition helps teams avoid isolated fixes and focus on the highest-impact action.",
           tag: "Risk Ranking",
           bridge: "Signals become solutions when the pattern and risk level are understood first.",
@@ -181,17 +195,19 @@ window.JeopardyData = {
         },
         {
           value: 300,
-          clue: "A trend shows the same documentation gap keeps returning. A one-time cleanup is not enough; the team needs this kind of action.",
-          response: "A targeted preventive action.",
-          why: "A recurring gap needs a system change that reduces recurrence, not another temporary cleanup.",
+          clue: "A sanitation or CIP verification trend keeps drifting toward the limit. A one-time adjustment is not enough; the team needs this kind of action.",
+          response: "A targeted preventive action with ownership and effectiveness verification.",
+          hostAccepts: "Accept preventive action, system fix, CAPA with ownership, recurrence prevention, parameter review, maintenance/training action, or effectiveness check.",
+          why: "A recurring sanitation or CIP signal needs a system fix that reduces recurrence, not another temporary adjustment.",
           tag: "Prevention",
-          bridge: "Repeated burden becomes solution when the fix is designed to prevent the next repeat.",
-          riskCard: { signal: "Recurring documentation gap", risk: "Repeat readiness failure", action: "Create targeted prevention with ownership" }
+          bridge: "Repeated burden becomes solution when the fix is designed to prevent the next drift.",
+          riskCard: { signal: "Recurring sanitation/CIP drift", risk: "Control weakness repeats", action: "Create targeted prevention with ownership" }
         },
         {
           value: 400,
           clue: "Two markets report similar quality signals, but one involves a higher-risk ingredient. What should guide where the team acts first?",
           response: "Risk ranking or risk-based prioritization.",
+          hostAccepts: "Accept risk ranking, risk-based prioritization, severity/likelihood assessment, or focusing first where consumer impact could be greatest.",
           why: "Risk-based prioritization helps teams use time and resources where consumer protection needs them most.",
           tag: "Risk Ranking",
           bridge: "Data and science move teams from scattered signals to focused, cost-effective solutions.",
@@ -201,6 +217,7 @@ window.JeopardyData = {
           value: 500,
           clue: "Explain how a team turns weak signals into a solution that protects consumers.",
           response: "Collect evidence, find patterns, rank risk, assign owners, target controls, and verify effectiveness.",
+          hostAccepts: "Correct answers should include at least four of these: collect evidence, identify patterns, rank risk, assign owners, apply targeted controls, verify effectiveness, and escalate when needed.",
           why: "The solution is strongest when evidence guides action and the team confirms the risk actually went down.",
           tag: "Targeted Action",
           bridge: "This is the WHO 2026 theme in practice: burden signals become targeted, verified solutions.",
@@ -213,6 +230,7 @@ window.JeopardyData = {
       name: "Myth vs Fact",
       shortName: "Myth vs Fact",
       accent: "Challenge assumptions. Build better habits.",
+      visual: { color: "#7c3aed", image: "assets/generated/station-myth-fact.png" },
       clues: [
         {
           value: 100,
@@ -236,6 +254,7 @@ window.JeopardyData = {
           value: 300,
           clue: "Myth or Fact: No complaints means no food safety risk exists.",
           response: "Myth.",
+          hostAccepts: "Accept Myth plus an explanation that absence of complaints is not proof of control; leading indicators, verification, and preventive controls still matter.",
           why: "Absence of complaints is not proof of safety; proactive controls and leading indicators still matter.",
           tag: "Data",
           bridge: "Evidence-based prevention looks for weak signals before complaints appear.",
@@ -254,6 +273,7 @@ window.JeopardyData = {
           value: 500,
           clue: "Myth or Fact: A small data gap is harmless if the team eventually escalates. Defend your answer with two possible impacts.",
           response: "Myth. Late or incomplete data can delay traceability, product disposition, customer communication, holds, or consumer protection.",
+          hostAccepts: "Accept Myth plus any two plausible impacts: delayed traceability, delayed holds, wrong disposition, incomplete investigation, customer/consumer communication delay, or slower consumer protection.",
           why: "The harder lesson is not just that data gaps matter; it is that delay and incompleteness can slow multiple protection actions at once.",
           tag: "Traceability",
           bridge: "Complete facts and timely escalation turn a possible burden into a coordinated solution.",
@@ -266,6 +286,7 @@ window.JeopardyData = {
       name: "From Burden to Solutions",
       shortName: "Burden to Solutions",
       accent: "See the pattern. Solve the risk.",
+      visual: { color: "#1d4ed8", image: "assets/generated/station-perfect-product.png" },
       clues: [
         {
           value: 100,
@@ -289,6 +310,7 @@ window.JeopardyData = {
           value: 300,
           clue: "Before choosing a fix for a recurring issue, teams should first understand this.",
           response: "The pattern, root cause, and risk level.",
+          hostAccepts: "Accept root cause, pattern/trend, risk level, why it keeps happening, or evidence needed to choose the right fix.",
           why: "A better understanding of recurrence helps teams choose a solution that fits the real problem.",
           tag: "Targeted Action",
           bridge: "Good solutions start with understanding the pattern behind the burden.",
@@ -296,17 +318,19 @@ window.JeopardyData = {
         },
         {
           value: 400,
-          clue: "Turn this burden into a solution: repeated expired supplier documents keep appearing during checks.",
-          response: "Assign ownership, automate reminders, escalate overdue items, monitor trends, and verify recurrence is reduced.",
-          why: "A solution should reduce recurrence, not just correct one expired document.",
+          clue: "Turn this burden into a solution: allergen or milk-containing product change information is not consistently reaching label and change-control reviewers.",
+          response: "Build clear ownership, change-control triggers, label review, cross-functional approval, and effectiveness checks.",
+          hostAccepts: "Correct answers should include ownership plus a prevention mechanism such as label review, change-control trigger, cross-functional approval, allergen assessment, training, or effectiveness verification.",
+          why: "A solution should prevent label and allergen communication gaps, not only correct one missed review.",
           tag: "Prevention",
           bridge: "Recurring burden calls for system design, ownership, and verification.",
-          riskCard: { signal: "Repeated expired supplier documents", risk: "Recurring documentation failure", action: "Build ownership, reminders, escalation, and trend review" }
+          riskCard: { signal: "Ingredient or label change gap", risk: "Allergen or consumer-use information missed", action: "Build change triggers, review, approval, and verification" }
         },
         {
           value: 500,
           clue: "Why does 'safe food everywhere' require more than manufacturing and QA?",
           response: "Because design, sourcing, labels, systems, training, logistics, data, communication, resources, and leadership decisions can all reduce or add risk.",
+          hostAccepts: "Accept answers naming at least three non-QA/manufacturing functions or decisions and explaining how they influence consumer protection.",
           why: "Food safety is shaped by decisions across the business, not only by final product checks.",
           tag: "Trust",
           bridge: "Cross-functional ownership turns a shared burden into a shared solution.",
@@ -319,6 +343,12 @@ window.JeopardyData = {
     category: "One Team, One Promise",
     clue: "A potential product safety issue has been identified. Name five functions that may need to work together and explain what each contributes to protecting consumers.",
     response: "Strong responses may include Quality / Food Safety for risk assessment and product disposition; Legal / Regulatory for compliance, reporting expectations, and documentation review; Supply Chain for traceability, holds, inventory, and customer-channel flow; Communications / Customer Teams for clear stakeholder communication; and Consumer Affairs / IT / Data / Finance / Leadership for trend data, system access, resources, decisions, and accountability.",
+    hostAccepts: "Score as correct when the team names at least five relevant functions and gives a consumer-protection contribution for each. Prompt once if they name functions but do not explain contributions.",
+    rubric: [
+      { label: "Full wager", text: "Five or more relevant functions plus a clear consumer-protection contribution for each." },
+      { label: "Half wager", text: "Three or four relevant functions with mostly clear contributions, or five functions with thin contribution detail." },
+      { label: "Miss", text: "Fewer than three functions, generic teamwork only, or no clear connection to consumer protection." }
+    ],
     why: "Cross-functional action supports fast decisions, traceability, accurate records, customer/consumer communication, and clear accountability.",
     tag: "Trust",
     bridge: "One team turns burden into solution when each function brings facts, speed, and accountability.",

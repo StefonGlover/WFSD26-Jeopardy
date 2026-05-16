@@ -27,7 +27,8 @@ const state = {
   finalWagersLocked: false,
   finalResponseRevealed: false,
   finalScoredTeams: new Set(),
-  finalComplete: false
+  finalComplete: false,
+  mobileCategoryIndex: 0
 };
 
 const gameTitle = document.getElementById("gameTitle");
@@ -36,6 +37,8 @@ const gameTheme = document.getElementById("gameTheme");
 const soundButton = document.getElementById("soundButton");
 const scoreboard = document.getElementById("scoreboard");
 const gameBoard = document.getElementById("gameBoard");
+const mobileCategoryNav = document.getElementById("mobileCategoryNav");
+const mobileBoard = document.getElementById("mobileBoard");
 const boardStatusStrip = document.getElementById("boardStatusStrip");
 const boardStatusKicker = document.getElementById("boardStatusKicker");
 const boardStatus = document.getElementById("boardStatus");
@@ -56,6 +59,7 @@ const categoryPrompt = document.getElementById("categoryPrompt");
 const clueText = document.getElementById("clueText");
 const responseBlock = document.getElementById("responseBlock");
 const responseText = document.getElementById("responseText");
+const acceptanceStrip = document.getElementById("acceptanceStrip");
 const whyText = document.getElementById("whyText");
 const teachingTag = document.getElementById("teachingTag");
 const glossaryStrip = document.getElementById("glossaryStrip");
@@ -78,6 +82,9 @@ const finalCategory = document.getElementById("finalCategory");
 const finalClue = document.getElementById("finalClue");
 const finalResponseBlock = document.getElementById("finalResponseBlock");
 const finalResponse = document.getElementById("finalResponse");
+const finalAcceptanceStrip = document.getElementById("finalAcceptanceStrip");
+const finalRubric = document.getElementById("finalRubric");
+const finalRubricList = document.getElementById("finalRubricList");
 const finalWhy = document.getElementById("finalWhy");
 const finalGlossaryStrip = document.getElementById("finalGlossaryStrip");
 const finalBridge = document.getElementById("finalBridge");
@@ -119,6 +126,15 @@ function getTotalClues() {
   return gameData.categories.reduce((sum, category) => sum + category.clues.length, 0);
 }
 
+function escapeHTML(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function getClueById(id) {
   const [categoryIndex, clueIndex] = String(id).split("-").map(Number);
   const category = gameData.categories[categoryIndex];
@@ -140,7 +156,7 @@ function serializeCurrentClue() {
   };
 }
 
-function serializeState({ includeTransient = false } = {}) {
+function serializeState({ includeTransient = false, includeUndo = true } = {}) {
   const totalTeams = state.teams.length;
   return {
     version: 1,
@@ -158,7 +174,13 @@ function serializeState({ includeTransient = false } = {}) {
     finalScoredTeams: [...state.finalScoredTeams],
     finalComplete: state.finalComplete,
     currentClue: includeTransient ? serializeCurrentClue() : null,
-    openDialog: includeTransient ? getOpenDialogName() : null
+    openDialog: includeTransient ? getOpenDialogName() : null,
+    undoSnapshot: includeUndo && state.undoSnapshot
+      ? {
+        label: state.undoSnapshot.label,
+        snapshot: state.undoSnapshot.snapshot
+      }
+      : null
   };
 }
 
@@ -205,6 +227,7 @@ function restoreState(snapshot, { reopenDialogs = false } = {}) {
   state.finalResponseRevealed = Boolean(snapshot.finalResponseRevealed);
   state.finalScoredTeams = new Set(snapshot.finalScoredTeams || []);
   state.finalComplete = Boolean(snapshot.finalComplete);
+  state.undoSnapshot = snapshot.undoSnapshot?.snapshot ? snapshot.undoSnapshot : null;
   restoreCurrentClue(snapshot.currentClue);
   renderState();
   if (reopenDialogs) {
@@ -215,7 +238,7 @@ function restoreState(snapshot, { reopenDialogs = false } = {}) {
 
 function saveState() {
   try {
-    window.localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(serializeState()));
+    window.localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(serializeState({ includeTransient: true })));
   } catch (error) {
     // Local persistence is helpful but not required for the live game to run.
   }
@@ -227,7 +250,7 @@ function loadState() {
     if (!rawState) return false;
     const savedState = JSON.parse(rawState);
     if (savedState?.version !== 1) return false;
-    return restoreState(savedState);
+    return restoreState(savedState, { reopenDialogs: true });
   } catch (error) {
     return false;
   }
@@ -263,9 +286,11 @@ function showDialog(dialog, returnFocusElement = document.activeElement) {
   rememberDialogFocus(dialog, returnFocusElement);
   if (typeof dialog.showModal === "function") {
     dialog.showModal();
+    saveState();
     return;
   }
   dialog.setAttribute("open", "");
+  saveState();
 }
 
 function closeDialog(dialog) {
@@ -290,6 +315,18 @@ function closeGameDialogs() {
       closeDialog(dialog);
     }
   });
+}
+
+function closeClueFromHost() {
+  if (state.currentClue?.stealOpen && !state.currentClue.resolved) return;
+  const revealedNeedsResolution = state.currentClue?.revealed && !state.currentClue.resolved && !state.currentClue.noScore;
+  if (revealedNeedsResolution) {
+    const confirmed = window.confirm("This response has been revealed. Close the clue and mark it as No Score?");
+    if (!confirmed) return;
+    noScore();
+  }
+  closeDialog(clueDialog);
+  saveState();
 }
 
 function restoreOpenDialog(dialogName) {
@@ -412,7 +449,7 @@ function updateUndoButton() {
 function captureUndo(label) {
   state.undoSnapshot = {
     label,
-    snapshot: serializeState({ includeTransient: true })
+    snapshot: serializeState({ includeTransient: true, includeUndo: false })
   };
   updateUndoButton();
 }
@@ -620,10 +657,11 @@ function renderScoreboard() {
     card.type = "button";
     card.className = `team-card${index === state.activeTeam ? " active" : ""}`;
     card.setAttribute("aria-pressed", index === state.activeTeam ? "true" : "false");
-    card.innerHTML = `
-      <span>${team.name}</span>
-      <strong>${formatScore(team.score)}</strong>
-    `;
+    const name = document.createElement("span");
+    name.textContent = team.name;
+    const score = document.createElement("strong");
+    score.textContent = formatScore(team.score);
+    card.append(name, score);
     card.addEventListener("click", () => {
       state.activeTeam = index;
       renderScoreboard();
@@ -637,7 +675,7 @@ function renderScoreboard() {
 
 function renderTeamSelect() {
   modalTeamSelect.innerHTML = state.teams
-    .map((team, index) => `<option value="${index}">${team.name}</option>`)
+    .map((team, index) => `<option value="${index}">${escapeHTML(team.name)}</option>`)
     .join("");
   modalTeamSelect.value = String(state.activeTeam);
 }
@@ -645,11 +683,19 @@ function renderTeamSelect() {
 function renderBoard() {
   gameBoard.innerHTML = "";
   gameBoard.style.setProperty("--category-count", gameData.categories.length);
+  state.mobileCategoryIndex = Math.min(state.mobileCategoryIndex, gameData.categories.length - 1);
 
-  gameData.categories.forEach((category) => {
+  gameData.categories.forEach((category, categoryIndex) => {
     const heading = document.createElement("div");
     heading.className = "category-heading";
     heading.textContent = category.shortName;
+    heading.style.setProperty("--category-accent", category.visual?.color || "var(--coke-red)");
+    heading.style.setProperty("--category-bg", `url("${category.visual?.image || "assets/generated/station-myth-fact.png"}")`);
+    heading.dataset.categoryId = category.id;
+    heading.addEventListener("click", () => {
+      state.mobileCategoryIndex = categoryIndex;
+      renderMobileBoard();
+    });
     gameBoard.appendChild(heading);
   });
 
@@ -662,12 +708,55 @@ function renderBoard() {
       tile.className = `clue-tile${state.usedClues.has(id) ? " used" : ""}`;
       tile.textContent = clue.value;
       tile.disabled = state.usedClues.has(id);
+      tile.style.setProperty("--category-accent", category.visual?.color || "var(--coke-red)");
       tile.setAttribute("aria-label", `${category.name} for ${clue.value} points`);
       tile.addEventListener("click", () => openClue(categoryIndex, clueIndex));
       gameBoard.appendChild(tile);
     });
   }
+  renderMobileBoard();
   updateProgress();
+}
+
+function renderMobileBoard() {
+  if (!mobileCategoryNav || !mobileBoard) return;
+  mobileCategoryNav.innerHTML = "";
+  gameData.categories.forEach((category, categoryIndex) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `mobile-category-button${categoryIndex === state.mobileCategoryIndex ? " active" : ""}`;
+    button.textContent = category.shortName;
+    button.style.setProperty("--category-accent", category.visual?.color || "var(--coke-red)");
+    button.setAttribute("aria-pressed", categoryIndex === state.mobileCategoryIndex ? "true" : "false");
+    button.addEventListener("click", () => {
+      state.mobileCategoryIndex = categoryIndex;
+      renderMobileBoard();
+    });
+    mobileCategoryNav.appendChild(button);
+  });
+
+  const category = gameData.categories[state.mobileCategoryIndex];
+  if (!category) {
+    mobileBoard.innerHTML = "";
+    return;
+  }
+  mobileBoard.style.setProperty("--category-accent", category.visual?.color || "var(--coke-red)");
+  mobileBoard.innerHTML = "";
+  const heading = document.createElement("div");
+  heading.className = "mobile-board-heading";
+  heading.innerHTML = `<span>${escapeHTML(category.name)}</span><p>${escapeHTML(category.accent)}</p>`;
+  mobileBoard.appendChild(heading);
+  category.clues.forEach((clue, clueIndex) => {
+    const id = clueId(state.mobileCategoryIndex, clueIndex);
+    const tile = document.createElement("button");
+    tile.type = "button";
+    tile.className = `mobile-clue-tile${state.usedClues.has(id) ? " used" : ""}`;
+    tile.disabled = state.usedClues.has(id);
+    tile.innerHTML = `<strong>${clue.value}</strong><span>${state.usedClues.has(id) ? "Used" : clue.tag}</span>`;
+    tile.setAttribute("aria-label", `${category.name} for ${clue.value} points`);
+    tile.addEventListener("click", () => openClue(state.mobileCategoryIndex, clueIndex));
+    mobileBoard.appendChild(tile);
+  });
 }
 
 function renderSetupFields() {
@@ -688,6 +777,7 @@ function renderSetupFields() {
 function openSetup() {
   renderSetupFields();
   showDialog(setupDialog);
+  teamFields.querySelector("input")?.focus();
 }
 
 function saveTeams() {
@@ -698,6 +788,8 @@ function saveTeams() {
   }));
   state.activeTeam = Math.min(state.activeTeam, state.teams.length - 1);
   state.finalWagers = state.finalWagers.slice(0, state.teams.length);
+  state.finalScoredTeams = new Set([...state.finalScoredTeams].filter((index) => index < state.teams.length));
+  state.finalComplete = state.finalScoredTeams.size === state.teams.length && state.finalResponseRevealed;
   renderScoreboard();
   renderTeamSelect();
   updateBoardStatus();
@@ -709,10 +801,17 @@ function renderCurrentClueView() {
   if (!state.currentClue) return;
   const { category, clue, isChallenge } = state.currentClue;
   clueMeta.textContent = `${category.name} - ${isChallenge ? clue.value * 2 : clue.value} Points`;
+  cluePanel.style.setProperty("--category-accent", category.visual?.color || "var(--coke-red)");
+  cluePanel.style.setProperty("--category-image", `url("${category.visual?.image || "assets/generated/station-myth-fact.png"}")`);
+  cluePanel.dataset.categoryId = category.id;
   categoryPrompt.hidden = true;
   renderClueStinger(category, isChallenge, false);
   clueText.textContent = clue.clue;
   responseText.textContent = clue.response;
+  if (acceptanceStrip) {
+    acceptanceStrip.hidden = !clue.hostAccepts;
+    acceptanceStrip.textContent = clue.hostAccepts || "";
+  }
   whyText.textContent = clue.why;
   teachingTag.textContent = clue.tag;
   renderGlossary(glossaryStrip, clue);
@@ -757,6 +856,7 @@ function openClue(categoryIndex, itemIndex) {
   hostNote.textContent = `${state.teams[state.activeTeam].name} has about 30 seconds. The host may allow one steal after a miss.`;
   saveState();
   showDialog(clueDialog);
+  revealButton.focus();
 }
 
 function revealClue() {
@@ -766,6 +866,7 @@ function revealClue() {
   state.currentClue.revealed = true;
   revealButton.disabled = true;
   updateScoreButtons();
+  saveState();
   correctButton.focus();
 }
 
@@ -793,6 +894,7 @@ function animateScore(teamIndex, multiplier) {
 function applyScore(multiplier) {
   if (!state.currentClue) return;
   const teamIndex = Number(modalTeamSelect.value);
+  const wasStealAttempt = Boolean(state.currentClue.stealOpen);
   if (
     state.currentClue.noScore ||
     state.currentClue.resolved ||
@@ -805,12 +907,15 @@ function applyScore(multiplier) {
   captureUndo(`${team.name} ${formatDelta(delta)}`);
   team.score += value * multiplier;
   state.currentClue.scoredTeams.add(teamIndex);
-  state.activeTeam = teamIndex;
   markCurrentUsed();
   if (multiplier > 0) {
+    state.activeTeam = teamIndex;
     state.currentClue.resolved = true;
   } else if (state.currentClue.stealOpen || state.currentClue.scoredTeams.size >= state.teams.length) {
     state.currentClue.resolved = true;
+    if (wasStealAttempt) {
+      modalTeamSelect.value = String(state.activeTeam);
+    }
   } else {
     state.currentClue.stealOpen = true;
   }
@@ -927,6 +1032,11 @@ function openFinal() {
   }
   finalCategory.textContent = gameData.finalJeopardy.category;
   finalResponse.textContent = gameData.finalJeopardy.response;
+  if (finalAcceptanceStrip) {
+    finalAcceptanceStrip.hidden = !gameData.finalJeopardy.hostAccepts;
+    finalAcceptanceStrip.textContent = gameData.finalJeopardy.hostAccepts || "";
+  }
+  renderFinalRubric();
   finalWhy.textContent = gameData.finalJeopardy.why;
   renderGlossary(finalGlossaryStrip, gameData.finalJeopardy);
   finalBridge.textContent = gameData.finalJeopardy.bridge;
@@ -939,6 +1049,8 @@ function openFinal() {
   renderFinalStage();
   updateFinalControls();
   showDialog(finalDialog);
+  const firstWagerInput = wagerGrid.querySelector("input:not(:disabled)");
+  (firstWagerInput || revealFinalButton || lockWagersButton).focus();
 }
 
 function renderFinalPrompt() {
@@ -958,20 +1070,37 @@ function renderWagers() {
     const inputLocked = state.finalWagersLocked || state.finalResponseRevealed || isScored || state.finalComplete;
     const wager = Math.min(maxWager, Math.max(0, Number(state.finalWagers[index]) || 0));
     state.finalWagers[index] = wager;
+    const teamName = escapeHTML(team.name);
+    const showScoreActions = state.finalResponseRevealed || isScored || state.finalComplete;
     card.className = `wager-card${isScored ? " scored" : ""}`;
     card.innerHTML = `
       <label>
-        <span>${team.name}</span>
-        <input type="number" min="0" max="${maxWager}" step="100" value="${wager}" data-wager-index="${index}" aria-label="${team.name} wager" ${inputLocked ? "disabled" : ""}>
+        <span>${teamName}</span>
+        <input type="number" min="0" max="${maxWager}" step="100" value="${wager}" data-wager-index="${index}" aria-label="${teamName} wager" ${inputLocked ? "disabled" : ""}>
       </label>
       <p class="wager-limit">Max wager: ${formatScore(maxWager)}</p>
-      <div class="wager-actions">
-        <button class="score-button positive" type="button" data-final-result="correct" data-team-index="${index}" ${state.finalResponseRevealed && !isScored && !state.finalComplete ? "" : "disabled"}>Correct</button>
-        <button class="score-button negative" type="button" data-final-result="incorrect" data-team-index="${index}" ${state.finalResponseRevealed && !isScored && !state.finalComplete ? "" : "disabled"}>Incorrect</button>
+      <div class="wager-actions final-score-actions" ${showScoreActions ? "" : "hidden"}>
+        <button class="score-button positive" type="button" data-final-result="correct" data-team-index="${index}" ${state.finalResponseRevealed && !isScored && !state.finalComplete ? "" : "disabled"}>Full +${wager}</button>
+        <button class="score-button partial" type="button" data-final-result="partial" data-team-index="${index}" ${state.finalResponseRevealed && !isScored && !state.finalComplete ? "" : "disabled"}>Half +${Math.floor(wager / 2)}</button>
+        <button class="score-button negative" type="button" data-final-result="incorrect" data-team-index="${index}" ${state.finalResponseRevealed && !isScored && !state.finalComplete ? "" : "disabled"}>Miss -${wager}</button>
       </div>
     `;
     wagerGrid.appendChild(card);
   });
+}
+
+function renderFinalRubric() {
+  if (!finalRubric || !finalRubricList) return;
+  const rubricItems = gameData.finalJeopardy.rubric || [];
+  finalRubric.hidden = !state.finalResponseRevealed || !rubricItems.length;
+  finalRubricList.innerHTML = rubricItems
+    .map((item) => `
+      <article>
+        <span>${escapeHTML(item.label)}</span>
+        <p>${escapeHTML(item.text)}</p>
+      </article>
+    `)
+    .join("");
 }
 
 function renderFinalStage() {
@@ -1031,10 +1160,9 @@ function revealFinal() {
   finalResponseBlock.hidden = false;
   state.finalResponseRevealed = true;
   renderFinalPrompt();
+  renderFinalRubric();
+  renderWagers();
   updateFinalControls();
-  wagerGrid.querySelectorAll("button").forEach((button) => {
-    button.disabled = state.finalScoredTeams.has(Number(button.dataset.teamIndex));
-  });
   renderFinalStage();
   saveState();
   wagerGrid.querySelector("button:not(:disabled)")?.focus();
@@ -1049,11 +1177,16 @@ function applyFinalScore(button) {
   const wager = Math.min(maxWager, Math.max(0, Number(input.value) || 0));
   input.value = String(wager);
   state.finalWagers[teamIndex] = wager;
-  const multiplier = result === "correct" ? 1 : -1;
-  const delta = wager * multiplier;
+  const scoring = {
+    correct: { delta: wager, type: "positive", sound: "correct", label: "Full" },
+    partial: { delta: Math.floor(wager / 2), type: wager ? "positive" : "neutral", sound: "correct", label: "Half" },
+    incorrect: { delta: -wager, type: wager ? "negative" : "neutral", sound: "incorrect", label: "Miss" }
+  }[result] || { delta: 0, type: "neutral", sound: "reveal", label: "Score" };
+  const delta = scoring.delta;
+  const resultType = scoring.type;
   captureUndo(`${state.teams[teamIndex].name} Final ${formatDelta(delta)}`);
-  playSound(multiplier > 0 ? "correct" : "incorrect");
-  state.teams[teamIndex].score += wager * multiplier;
+  playSound(scoring.sound);
+  state.teams[teamIndex].score += delta;
   state.finalScoredTeams.add(teamIndex);
   const card = button.closest(".wager-card");
   card.classList.add("scored");
@@ -1062,17 +1195,19 @@ function applyFinalScore(button) {
     item.disabled = true;
   });
   renderScoreboard();
-  animateScore(teamIndex, multiplier);
+  if (delta !== 0) {
+    animateScore(teamIndex, delta > 0 ? 1 : -1);
+  }
   updateBoardStatus();
   renderFinalStage();
   updateFinalControls();
   recordHistory({
     title: "Final Jeopardy",
-    detail: `${state.teams[teamIndex].name} ${formatDelta(delta)}`,
+    detail: `${state.teams[teamIndex].name} ${scoring.label} ${formatDelta(delta)}`,
     delta,
-    type: multiplier > 0 ? "positive" : "negative"
+    type: resultType
   });
-  showToast(`${state.teams[teamIndex].name} ${formatDelta(delta)}`, multiplier > 0 ? "positive" : "negative");
+  showToast(`${state.teams[teamIndex].name} ${scoring.label} ${formatDelta(delta)}`, resultType);
   if (state.finalScoredTeams.size === state.teams.length) {
     state.finalComplete = true;
     updateFinalButton();
@@ -1128,8 +1263,8 @@ function renderRecentPlays() {
   recentPlayList.innerHTML = state.actionHistory
     .map((entry) => `
       <article class="${entry.type || "neutral"}">
-        <span>${entry.title}</span>
-        <p>${entry.detail}</p>
+        <span>${escapeHTML(entry.title)}</span>
+        <p>${escapeHTML(entry.detail)}</p>
       </article>
     `)
     .join("");
@@ -1223,7 +1358,7 @@ function renderEndScreen() {
   winnerTitle.textContent = winners.length > 1 ? `Winners: ${winners.join(" + ")}` : `Winner: ${winners[0]}`;
   closeoutText.textContent = gameData.closeout;
   finalScoreList.innerHTML = ranked
-    .map((team, index) => `<div style="--score-index: ${index};"><span>${team.name}</span><strong>${formatScore(team.score)}</strong></div>`)
+    .map((team, index) => `<div style="--score-index: ${index};"><span>${escapeHTML(team.name)}</span><strong>${formatScore(team.score)}</strong></div>`)
     .join("");
   pledgeCard.innerHTML = `
     <span>${gameData.pledge.title}</span>
@@ -1253,6 +1388,42 @@ function isDialogOpen(dialog) {
   return Boolean(dialog?.open);
 }
 
+function getActiveDialog() {
+  return [endDialog, finalDialog, clueDialog, hostNotesDialog, rulesDialog, setupDialog].find(isDialogOpen) || null;
+}
+
+function getFocusableElements(container) {
+  return [...container.querySelectorAll(
+    'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+  )].filter((element) => !element.hidden && element.getClientRects().length > 0);
+}
+
+function trapDialogTab(event) {
+  if (event.key !== "Tab") return false;
+  const dialog = getActiveDialog();
+  if (!dialog) return false;
+  const focusable = getFocusableElements(dialog);
+  if (!focusable.length) return false;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (!dialog.contains(document.activeElement)) {
+    event.preventDefault();
+    first.focus();
+    return true;
+  }
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+    return true;
+  }
+  if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+    return true;
+  }
+  return false;
+}
+
 function clickIfAvailable(button) {
   if (!button || button.disabled) return false;
   button.click();
@@ -1260,6 +1431,8 @@ function clickIfAvailable(button) {
 }
 
 function handleKeyboardShortcuts(event) {
+  if (trapDialogTab(event)) return;
+
   if (
     event.defaultPrevented ||
     event.altKey ||
@@ -1339,8 +1512,8 @@ function bindEvents() {
     renderEndScreen();
     showDialog(endDialog, event.currentTarget);
   });
-  closeClueButton.addEventListener("click", () => closeDialog(clueDialog));
-  backButton.addEventListener("click", () => closeDialog(clueDialog));
+  closeClueButton.addEventListener("click", closeClueFromHost);
+  backButton.addEventListener("click", closeClueFromHost);
   clueDialog.addEventListener("cancel", (event) => {
     if (state.currentClue?.stealOpen && !state.currentClue.resolved) {
       event.preventDefault();
@@ -1350,7 +1523,10 @@ function bindEvents() {
   document.getElementById("finalBackButton").addEventListener("click", () => closeDialog(finalDialog));
   document.getElementById("closeEndButton").addEventListener("click", () => closeDialog(endDialog));
   [setupDialog, clueDialog, finalDialog, hostNotesDialog, rulesDialog, endDialog].forEach((dialog) => {
-    dialog.addEventListener("close", () => restoreDialogFocus(dialog));
+    dialog.addEventListener("close", () => {
+      restoreDialogFocus(dialog);
+      saveState();
+    });
   });
   document.getElementById("addTeamButton").addEventListener("click", () => {
     if (state.teams.length >= 5) return;
@@ -1368,6 +1544,11 @@ function bindEvents() {
     saveTeams();
   });
   modalTeamSelect.addEventListener("change", () => {
+    if (isDialogOpen(clueDialog)) {
+      updateScoreButtons();
+      saveState();
+      return;
+    }
     state.activeTeam = Number(modalTeamSelect.value);
     renderScoreboard();
     updateBoardStatus();
@@ -1389,6 +1570,9 @@ function bindEvents() {
     const maxWager = Math.max(0, state.teams[teamIndex].score);
     const wager = Math.min(maxWager, Math.max(0, Number(input.value) || 0));
     state.finalWagers[teamIndex] = wager;
+    if (input.value !== String(wager)) {
+      input.value = String(wager);
+    }
     saveState();
   });
   wagerGrid.addEventListener("click", (event) => {
@@ -1405,6 +1589,7 @@ function init() {
   gameSubtitle.textContent = gameData.subtitle;
   gameTheme.textContent = gameData.theme;
   renderRules();
+  bindEvents();
   const resumed = loadState();
   if (!resumed) {
     seedChallengeClue();
@@ -1416,7 +1601,6 @@ function init() {
     updateUndoButton();
     applyPresenterMode();
   }
-  bindEvents();
 }
 
 init();
