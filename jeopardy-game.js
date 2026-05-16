@@ -72,7 +72,6 @@ const revealButton = document.getElementById("revealButton");
 const correctButton = document.getElementById("correctButton");
 const incorrectButton = document.getElementById("incorrectButton");
 const noScoreButton = document.getElementById("noScoreButton");
-const backButton = document.getElementById("backButton");
 const closeClueButton = document.getElementById("closeClueButton");
 const hostNote = document.getElementById("hostNote");
 const finalDialog = document.getElementById("finalDialog");
@@ -972,9 +971,8 @@ function updateScoreButtons() {
   incorrectButton.disabled = !revealed || alreadyScored || noScoreApplied || resolved;
   noScoreButton.disabled = !revealed || noScoreApplied || resolved;
   noScoreButton.textContent = stealPending ? "Close Clue" : "No Score";
-  backButton.disabled = stealPending;
   closeClueButton.disabled = stealPending;
-  backButton.classList.toggle("primary-next", resolved && !stealPending);
+  closeClueButton.classList.toggle("primary-next", resolved && !stealPending);
 }
 
 function updateHostNoteForCurrentClue() {
@@ -1527,6 +1525,7 @@ function handleKeyboardShortcuts(event) {
 function bindEvents() {
   soundButton.addEventListener("click", toggleSound);
   document.getElementById("setupButton").addEventListener("click", openSetup);
+  document.getElementById("closeSetupButton").addEventListener("click", () => closeDialog(setupDialog));
   document.getElementById("rulesButton").addEventListener("click", (event) => showDialog(rulesDialog, event.currentTarget));
   document.getElementById("closeRulesButton").addEventListener("click", () => closeDialog(rulesDialog));
   document.getElementById("hostNotesButton").addEventListener("click", (event) => showDialog(hostNotesDialog, event.currentTarget));
@@ -1545,7 +1544,6 @@ function bindEvents() {
     showDialog(endDialog, event.currentTarget);
   });
   closeClueButton.addEventListener("click", closeClueFromHost);
-  backButton.addEventListener("click", closeClueFromHost);
   clueDialog.addEventListener("cancel", (event) => {
     if (state.currentClue?.stealOpen && !state.currentClue.resolved) {
       event.preventDefault();
@@ -1553,7 +1551,6 @@ function bindEvents() {
   });
   document.getElementById("closeFinalButton").addEventListener("click", () => closeDialog(finalDialog));
   finalUndoButton.addEventListener("click", undoLastAction);
-  document.getElementById("finalBackButton").addEventListener("click", () => closeDialog(finalDialog));
   document.getElementById("closeEndButton").addEventListener("click", () => closeDialog(endDialog));
   [setupDialog, clueDialog, finalDialog, hostNotesDialog, rulesDialog, endDialog].forEach((dialog) => {
     dialog.addEventListener("close", () => {

@@ -54,10 +54,13 @@
 
     <dialog class="setup-dialog" id="setupDialog" aria-labelledby="setupTitle">
       <form method="dialog" class="setup-panel" id="setupForm">
-        <div>
-          <p class="eyebrow">Team Setup</p>
-          <h2 id="setupTitle">Build Teams</h2>
-          <p>Use two to five teams. Names can be changed anytime before or during play.</p>
+        <div class="modal-title-row">
+          <div>
+            <p class="eyebrow">Team Setup</p>
+            <h2 id="setupTitle">Build Teams</h2>
+            <p>Use two to five teams. Names can be changed anytime before or during play.</p>
+          </div>
+          <button class="icon-button modal-close-button" type="button" id="closeSetupButton" title="Close Team Setup" aria-label="Close Team Setup">X</button>
         </div>
         <div class="team-fields" id="teamFields"></div>
         <div class="dialog-actions">
@@ -72,7 +75,7 @@
       <section class="clue-panel" data-clue-stage="clue">
         <div class="clue-topline">
           <p id="clueMeta">Category - 100 Points</p>
-          <button class="icon-button close-button" type="button" id="closeClueButton" title="Back to board" aria-label="Back to board">x</button>
+          <button class="icon-button modal-close-button" type="button" id="closeClueButton" data-control="back" title="Back to board" aria-label="Back to board">X</button>
         </div>
         <div class="clue-stinger" id="clueStinger" hidden>
           <p id="stingerEyebrow"></p>
@@ -122,7 +125,6 @@
           <button class="score-button positive" type="button" id="correctButton" data-control="score" disabled>Correct +</button>
           <button class="score-button negative" type="button" id="incorrectButton" data-control="score" disabled>Incorrect -</button>
           <button class="text-button" type="button" id="noScoreButton" data-control="close" disabled>No Score</button>
-          <button class="text-button" type="button" id="backButton" data-control="back">Back to Board</button>
         </div>
         <p class="host-note" id="hostNote" aria-live="polite" aria-atomic="true">Teams have about 30 seconds. The host may allow one steal after a miss.</p>
       </section>
@@ -132,7 +134,7 @@
       <section class="clue-panel final-panel" data-final-stage="wagers">
         <div class="clue-topline">
           <p id="finalMeta">Final Jeopardy - <span id="finalCategory">One Team, One Promise</span></p>
-          <button class="icon-button close-button" type="button" id="closeFinalButton" title="Back to board" aria-label="Back to board">x</button>
+          <button class="icon-button modal-close-button" type="button" id="closeFinalButton" title="Back to board" aria-label="Back to board">X</button>
         </div>
         <div class="clue-card">
           <ol class="final-steps" id="finalSteps" aria-label="Final Jeopardy flow">
@@ -180,7 +182,6 @@
           <button class="primary-button" type="button" id="lockWagersButton">Lock Wagers</button>
           <button class="primary-button" type="button" id="revealFinalButton">Reveal Final Response</button>
           <button class="text-button" type="button" id="finalUndoButton" disabled>Undo</button>
-          <button class="text-button" type="button" id="finalBackButton">Back to Board</button>
         </div>
       </section>
     </dialog>
@@ -193,7 +194,7 @@
             <h2 id="hostNotesTitle">Host Notes</h2>
             <p class="host-notes-subtitle">Keep the game moving, connect each answer to prevention, and use shortcuts only when the board or clue screen is active.</p>
           </div>
-          <button class="icon-button close-button" type="button" id="closeHostNotesIcon" title="Close Host Notes" aria-label="Close Host Notes">x</button>
+          <button class="icon-button modal-close-button" type="button" id="closeHostNotesIcon" title="Close Host Notes" aria-label="Close Host Notes">X</button>
         </div>
         <div class="host-notes-body">
           <div class="host-note-section">
@@ -230,7 +231,7 @@
           <p class="eyebrow">How to Play</p>
           <h2 id="rulesTitle">Classic Jeopardy Format</h2>
           </div>
-          <button class="icon-button close-button" type="button" id="closeRulesButton" title="Close rules" aria-label="Close rules">x</button>
+          <button class="icon-button modal-close-button" type="button" id="closeRulesButton" title="Close rules" aria-label="Close rules">X</button>
         </div>
           <p class="theme-lens" id="rulesThemeLens"></p>
         <ol class="rules-list" id="rulesList"></ol>
@@ -240,17 +241,17 @@
     <dialog class="setup-dialog" id="endDialog" aria-labelledby="winnerTitle">
       <section class="setup-panel end-panel">
         <div class="winner-celebration" id="winnerCelebration" aria-hidden="true"></div>
-        <div>
-          <p class="eyebrow">Game Complete</p>
-          <h2 id="winnerTitle">Winner</h2>
-          <p id="closeoutText">Safe Food Everywhere: Every Function Plays a Part.</p>
+        <div class="modal-title-row">
+          <div>
+            <p class="eyebrow">Game Complete</p>
+            <h2 id="winnerTitle">Winner</h2>
+            <p id="closeoutText">Safe Food Everywhere: Every Function Plays a Part.</p>
+          </div>
+          <button class="icon-button modal-close-button" type="button" id="closeEndButton" title="Back to board" aria-label="Back to board">X</button>
         </div>
         <div class="final-score-list" id="finalScoreList"></div>
         <article class="pledge-card" id="pledgeCard"></article>
         <div class="debrief-grid" id="debriefTakeaways" aria-label="Game debrief takeaways"></div>
-        <div class="dialog-actions">
-          <button class="primary-button" type="button" id="closeEndButton">Back to Board</button>
-        </div>
       </section>
     </dialog>
 

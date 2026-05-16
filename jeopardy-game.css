@@ -595,8 +595,11 @@ dialog::backdrop {
   margin-bottom: 14px;
 }
 
-.modal-title-row .close-button {
+.modal-close-button {
   flex: 0 0 auto;
+  color: var(--white);
+  font-size: 20px;
+  line-height: 1;
 }
 
 .team-fields {
@@ -697,7 +700,7 @@ dialog::backdrop {
   line-height: 1.35 !important;
 }
 
-.host-notes-header .close-button {
+.host-notes-header .modal-close-button {
   margin-top: 8px;
 }
 
@@ -933,10 +936,6 @@ dialog::backdrop {
   font-size: clamp(15px, 1.8vw, 24px);
   font-weight: 900;
   text-transform: uppercase;
-}
-
-.close-button {
-  flex: 0 0 auto;
 }
 
 .clue-stinger {
@@ -1215,7 +1214,7 @@ dialog::backdrop {
 }
 
 .clue-panel[data-clue-stage="steal"] #noScoreButton,
-.clue-panel[data-clue-stage="closed"] #backButton {
+.clue-panel[data-clue-stage="closed"] #closeClueButton {
   background: var(--coke-red);
   border-color: var(--coke-red);
   color: var(--white);
@@ -1380,7 +1379,7 @@ dialog::backdrop {
 }
 
 .final-controls {
-  grid-template-columns: repeat(4, auto);
+  grid-template-columns: repeat(3, auto);
   justify-content: end;
 }
 
