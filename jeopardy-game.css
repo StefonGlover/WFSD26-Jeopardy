@@ -58,7 +58,7 @@ body.presenter-mode .header-actions {
   margin: 0 auto;
   padding: 20px 0 28px;
   display: grid;
-  grid-template-rows: auto auto auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
   gap: 14px;
 }
 
@@ -252,49 +252,6 @@ body.presenter-mode .header-actions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 10px;
-}
-
-.board-status-strip {
-  min-height: 54px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border: 1px solid rgba(255, 209, 92, 0.3);
-  border-radius: 8px;
-  background:
-    linear-gradient(90deg, rgba(255, 209, 92, 0.14), transparent 46%),
-    rgba(0, 0, 0, 0.54);
-  box-shadow: inset 0 0 0 1px rgba(255, 209, 92, 0.06);
-  padding: 10px 16px;
-}
-
-.board-status-strip[data-status-state="board-complete"],
-.board-status-strip[data-status-state="final-complete"] {
-  border-color: rgba(255, 209, 92, 0.56);
-  background:
-    linear-gradient(90deg, rgba(244, 0, 0, 0.24), rgba(255, 209, 92, 0.15)),
-    rgba(0, 0, 0, 0.62);
-}
-
-.board-status-strip[data-status-state="notice"] {
-  border-color: rgba(255, 255, 255, 0.28);
-}
-
-.status-kicker {
-  flex: 0 0 auto;
-  color: var(--gold);
-  font-size: 12px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.board-status-strip p {
-  margin: 0;
-  color: var(--white);
-  font-size: clamp(17px, 1.7vw, 26px);
-  font-weight: 900;
-  text-align: right;
 }
 
 .team-card {
@@ -957,7 +914,7 @@ dialog::backdrop {
   width: min(1240px, calc(100vw - 28px));
   max-height: calc(100svh - 28px);
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
   overflow: hidden;
   padding: clamp(16px, 2.2vw, 30px);
 }
@@ -1423,7 +1380,7 @@ dialog::backdrop {
 }
 
 .final-controls {
-  grid-template-columns: repeat(3, auto);
+  grid-template-columns: repeat(4, auto);
   justify-content: end;
 }
 
@@ -1890,11 +1847,6 @@ dialog::backdrop {
     margin-bottom: 5px;
   }
 
-  .board-status-strip {
-    min-height: 46px;
-    padding: 8px 14px;
-  }
-
   .board-wrap {
     padding: 8px;
   }
@@ -1970,15 +1922,6 @@ dialog::backdrop {
 
   .team-card strong {
     font-size: clamp(24px, 2.6vw, 34px);
-  }
-
-  .board-status-strip {
-    min-height: 38px;
-    padding: 6px 10px;
-  }
-
-  .board-status-strip p {
-    font-size: clamp(15px, 1.45vw, 21px);
   }
 
   .board-wrap {
@@ -2072,7 +2015,7 @@ dialog::backdrop {
   .host-controls {
     position: sticky;
     bottom: 0;
-    grid-template-columns: minmax(110px, 140px) minmax(130px, 180px) repeat(6, auto);
+    grid-template-columns: minmax(110px, 140px) minmax(130px, 180px) repeat(7, auto);
     margin: 10px -4px -4px;
     padding: 10px 4px 4px;
     background: linear-gradient(180deg, rgba(17, 17, 17, 0), #111 25%);
@@ -2107,7 +2050,6 @@ dialog::backdrop {
   .title-block,
   .header-actions,
   .scoreboard,
-  .board-status-strip,
   .board-wrap,
   .game-footer {
     max-width: 100%;
@@ -2116,16 +2058,6 @@ dialog::backdrop {
 
   .scoreboard {
     grid-template-columns: 1fr;
-  }
-
-  .board-status-strip {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .board-status-strip p {
-    text-align: left;
   }
 
   .game-footer,
@@ -2168,6 +2100,21 @@ dialog::backdrop {
   .footer-flow {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "final final"
+      "next end";
+  }
+
+  .next-team-button {
+    grid-area: next;
+  }
+
+  .footer-flow .final-button {
+    grid-area: final;
+  }
+
+  .end-button {
+    grid-area: end;
   }
 
   .progress-status {
@@ -2208,7 +2155,7 @@ dialog::backdrop {
 
   .clue-panel {
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
     max-height: calc(100svh - 18px);
     overflow: hidden;
     padding: 10px;
