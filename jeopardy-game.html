@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Safe Food, Fast Thinking</title>
     <link rel="icon" href="assets/generated/coca-cola-logo.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="jeopardy-game.css">
+    <link rel="stylesheet" href="jeopardy-game.css?v=20260517-winner-sound">
   </head>
   <body>
     <main class="game-shell">
@@ -20,7 +20,7 @@
         </div>
         <div class="header-actions">
           <button class="icon-button" type="button" id="rulesButton" title="Show rules" aria-label="Show rules">?</button>
-          <button class="icon-button sound-toggle muted" type="button" id="soundButton" title="Unmute sounds" aria-label="Unmute sounds" aria-pressed="false">♪</button>
+          <button class="text-button sound-toggle muted" type="button" id="soundButton" title="Turn sound on" aria-label="Sound is off. Turn sound on." aria-pressed="false">Sound Off</button>
           <button class="text-button" type="button" id="setupButton">Teams</button>
           <button class="text-button danger" type="button" id="resetButton">Reset</button>
         </div>
@@ -255,7 +255,7 @@
       </section>
     </dialog>
 
-    <script src="jeopardy-data.js"></script>
-    <script src="jeopardy-game.js"></script>
+    <script src="jeopardy-data.js?v=20260517-winner-sound"></script>
+    <script src="jeopardy-game.js?v=20260517-winner-sound"></script>
   </body>
 </html>

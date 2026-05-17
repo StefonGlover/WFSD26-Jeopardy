@@ -195,6 +195,7 @@ body.presenter-mode .header-actions {
 
 .sound-toggle {
   position: relative;
+  min-width: 88px;
   color: var(--gold);
 }
 
@@ -203,12 +204,7 @@ body.presenter-mode .header-actions {
 }
 
 .sound-toggle.muted::after {
-  content: "";
-  position: absolute;
-  width: 24px;
-  height: 2px;
-  background: var(--coke-red);
-  transform: rotate(-38deg);
+  content: none;
 }
 
 .text-button {
