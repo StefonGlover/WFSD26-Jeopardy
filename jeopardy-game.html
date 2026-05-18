@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Safe Food, Fast Thinking</title>
     <link rel="icon" href="assets/generated/coca-cola-logo.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="jeopardy-game.css?v=cc2508af81">
+    <link rel="stylesheet" href="jeopardy-game.css?v=d20ca1dae0">
   </head>
   <body>
     <main class="game-shell">
@@ -45,7 +45,6 @@
         <div class="footer-flow">
           <button class="text-button next-team-button" type="button" id="nextTeamButton">Next Team →</button>
           <button class="final-button" type="button" id="finalButton">Final Jeopardy</button>
-          <button class="text-button end-button" type="button" id="endButton">Show Winner</button>
         </div>
       </footer>
     </main>
@@ -119,14 +118,12 @@
         <div class="host-controls">
           <label for="modalTeamSelect" data-control="team">Scoring team</label>
           <select id="modalTeamSelect" data-control="team"></select>
-          <button class="timer-button" type="button" id="timerButton" data-control="timer">Start 30s</button>
-          <output class="timer-display" id="timerDisplay" data-control="timer" aria-live="polite">:30</output>
           <button class="primary-button" type="button" id="revealButton" data-control="reveal">Reveal Response</button>
           <button class="score-button positive" type="button" id="correctButton" data-control="score" disabled>Correct +</button>
           <button class="score-button negative" type="button" id="incorrectButton" data-control="score" disabled>Incorrect -</button>
-          <button class="text-button" type="button" id="noScoreButton" data-control="close" disabled>No Score</button>
+          <button class="text-button" type="button" id="noScoreButton" data-control="close" disabled>No Score / Close</button>
         </div>
-        <p class="host-note" id="hostNote" aria-live="polite" aria-atomic="true">Teams have about 30 seconds. The host may allow one steal after a miss.</p>
+        <p class="host-note" id="hostNote" aria-live="polite" aria-atomic="true">Reveal when ready. Score the selected team or close the clue with no score.</p>
       </section>
     </dialog>
 
@@ -179,8 +176,7 @@
           </div>
         </div>
         <div class="host-controls final-controls">
-          <button class="primary-button" type="button" id="lockWagersButton">Lock Wagers</button>
-          <button class="primary-button" type="button" id="revealFinalButton">Reveal Final Response</button>
+          <button class="primary-button" type="button" id="finalPrimaryButton">Lock Wagers &amp; Reveal Clue</button>
           <button class="text-button" type="button" id="finalUndoButton" disabled>Undo</button>
         </div>
       </section>
@@ -192,7 +188,7 @@
           <div>
             <p class="eyebrow">Facilitator Cue Card</p>
             <h2 id="hostNotesTitle">Host Notes</h2>
-            <p class="host-notes-subtitle">Keep the game moving, connect each answer to prevention, and use shortcuts only when the board or clue screen is active.</p>
+            <p class="host-notes-subtitle">Keep the game moving and connect each answer to prevention.</p>
           </div>
           <button class="icon-button modal-close-button" type="button" id="closeHostNotesIcon" title="Close Host Notes" aria-label="Close Host Notes">X</button>
         </div>
@@ -205,22 +201,6 @@
               <p>No plays yet.</p>
             </div>
           </div>
-          <aside class="shortcut-panel" aria-label="Keyboard shortcuts">
-            <h3 class="section-title">Shortcuts</h3>
-            <div class="shortcut-list" id="shortcutList"></div>
-            <label class="challenge-toggle presenter-toggle" for="presenterToggle">
-              <input type="checkbox" id="presenterToggle">
-              <span>Presenter Mode</span>
-              <small>Hide setup controls for a cleaner projector view.</small>
-            </label>
-            <label class="challenge-toggle" for="challengeToggle">
-              <input type="checkbox" id="challengeToggle" checked>
-              <span id="challengeToggleLabel">Challenge Clue</span>
-              <small id="challengeToggleDescription">Hidden on one 300-500 point tile. Correct or incorrect answers count double.</small>
-            </label>
-            <a class="text-button score-sheet-link" href="host-score-sheet.html" id="hostScoreSheetLink">Print Score Sheet</a>
-            <p class="host-small-note">Shortcuts pause while typing team names or wagers.</p>
-          </aside>
         </div>
       </section>
     </dialog>
@@ -284,9 +264,9 @@
       </section>
     </dialog>
 
-    <script src="jeopardy-data.js?v=43b9dd8fa6"></script>
+    <script src="jeopardy-data.js?v=b244a25d60"></script>
     <script src="jeopardy-sound.js?v=bf4ef04a83"></script>
     <script src="jeopardy-dialogs.js?v=20d83550f6"></script>
-    <script src="jeopardy-game.js?v=d773f0a810"></script>
+    <script src="jeopardy-game.js?v=283b8fa9dd"></script>
   </body>
 </html>

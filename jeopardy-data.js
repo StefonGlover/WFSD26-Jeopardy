@@ -10,10 +10,6 @@ window.JeopardyData = {
     title: "Safe Food Everywhere Pledge",
     text: "One action we will take: Spot signals. Rank risk. Verify prevention."
   },
-  challengeClue: {
-    label: "Challenge Clue",
-    description: "Hidden on one 300-500 point tile. Correct or incorrect answers count double."
-  },
   debriefTakeaways: [
     { title: "Spot signals", text: "Notice complaints, records, holds, observations, and trends early." },
     { title: "Rank risk", text: "Use science and evidence to focus attention where impact could be greatest." },
@@ -24,12 +20,6 @@ window.JeopardyData = {
     { title: "Scoring", text: "Reveal the response before scoring. Correct adds the tile value; incorrect subtracts it." },
     { title: "Steal", text: "After a miss, choose another team for one optional steal or close the clue with no score." },
     { title: "Close", text: "Ask each team to name one signal they will watch for and one prevention action they can strengthen." }
-  ],
-  shortcuts: [
-    { key: "R", action: "Reveal response" },
-    { key: "C", action: "Mark clue correct" },
-    { key: "I", action: "Mark clue incorrect" },
-    { key: "N", action: "Move to next team" }
   ],
   hashtag: "#WorldFoodSafetyDay",
   brands: "Coca-Cola • Coca-Cola Zero Sugar • Sprite • Fanta • DASANI • Minute Maid • fairlife • CORE POWER",
@@ -44,7 +34,6 @@ window.JeopardyData = {
     "Follow the progress meter from burden signals to safe food everywhere as clues are played.",
     "Pick a category and point value. The first clue in each category gives the host a quick theme stinger.",
     "Reveal the response, connect it to the theme lens and burden-to-solution teaching point, then score the team.",
-    "If Challenge Clue is enabled, one hidden 300-500 point tile is worth double.",
     "After a miss, the host may select another team and allow one steal.",
     "Use Final Jeopardy to close with one shared promise: protect consumers through coordinated action."
   ],
