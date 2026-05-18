@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Safe Food, Fast Thinking</title>
     <link rel="icon" href="assets/generated/coca-cola-logo.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="jeopardy-game.css?v=20260517-winner-sound">
+    <link rel="stylesheet" href="jeopardy-game.css?v=cc2508af81">
   </head>
   <body>
     <main class="game-shell">
@@ -218,8 +218,37 @@
               <span id="challengeToggleLabel">Challenge Clue</span>
               <small id="challengeToggleDescription">Hidden on one 300-500 point tile. Correct or incorrect answers count double.</small>
             </label>
+            <a class="text-button score-sheet-link" href="host-score-sheet.html" id="hostScoreSheetLink">Print Score Sheet</a>
             <p class="host-small-note">Shortcuts pause while typing team names or wagers.</p>
           </aside>
+        </div>
+      </section>
+    </dialog>
+
+    <dialog class="setup-dialog" id="resumeDialog" aria-labelledby="resumeTitle">
+      <section class="setup-panel confirm-panel">
+        <div>
+          <p class="eyebrow">Saved Game Found</p>
+          <h2 id="resumeTitle">Resume or Start Fresh?</h2>
+          <p id="resumeSummary">A saved game is available on this device.</p>
+        </div>
+        <div class="dialog-actions">
+          <button class="text-button" type="button" id="startFreshButton">Start Fresh</button>
+          <button class="primary-button" type="button" id="resumeSavedButton">Resume Game</button>
+        </div>
+      </section>
+    </dialog>
+
+    <dialog class="setup-dialog" id="confirmDialog" aria-labelledby="confirmTitle">
+      <section class="setup-panel confirm-panel">
+        <div>
+          <p class="eyebrow" id="confirmKicker">Host Check</p>
+          <h2 id="confirmTitle">Confirm Action</h2>
+          <p id="confirmMessage">Continue?</p>
+        </div>
+        <div class="dialog-actions">
+          <button class="text-button" type="button" id="confirmCancelButton">Cancel</button>
+          <button class="primary-button" type="button" id="confirmAcceptButton">Continue</button>
         </div>
       </section>
     </dialog>
@@ -255,7 +284,9 @@
       </section>
     </dialog>
 
-    <script src="jeopardy-data.js?v=20260517-winner-sound"></script>
-    <script src="jeopardy-game.js?v=20260517-winner-sound"></script>
+    <script src="jeopardy-data.js?v=43b9dd8fa6"></script>
+    <script src="jeopardy-sound.js?v=bf4ef04a83"></script>
+    <script src="jeopardy-dialogs.js?v=20d83550f6"></script>
+    <script src="jeopardy-game.js?v=d773f0a810"></script>
   </body>
 </html>

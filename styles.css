@@ -488,6 +488,99 @@ p {
   color: var(--coke-red);
 }
 
+.score-sheet-page {
+  min-height: 100vh;
+  background: #f7f1e8;
+  color: #111;
+  padding: 24px;
+}
+
+.score-sheet {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+
+.score-sheet-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  border-bottom: 4px solid var(--coke-red);
+  padding-bottom: 18px;
+}
+
+.score-sheet-header h1 {
+  margin-bottom: 8px;
+  font-size: clamp(38px, 6vw, 72px);
+  line-height: 0.95;
+}
+
+.score-sheet-section {
+  margin-top: 24px;
+}
+
+.score-sheet-section h2 {
+  margin-bottom: 12px;
+  color: var(--coke-red);
+  font-size: 22px;
+  text-transform: uppercase;
+}
+
+.score-team-grid,
+.final-score-grid,
+.score-note-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.score-team-grid article,
+.final-score-grid article,
+.score-note-grid article {
+  min-height: 110px;
+  border: 2px solid #111;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.score-team-grid strong,
+.final-score-grid strong,
+.score-note-grid span {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.score-board-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.score-board-table th,
+.score-board-table td {
+  border: 2px solid #111;
+  padding: 14px 8px;
+  text-align: center;
+  font-weight: 900;
+}
+
+.score-board-table th {
+  background: var(--coke-red);
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.score-board-table td {
+  height: 76px;
+  font-size: 28px;
+}
+
 @media (max-width: 1080px) {
   .app-header,
   .app-shell {
@@ -532,7 +625,8 @@ p {
   }
 
   .app-header,
-  .app-shell {
+  .app-shell,
+  .no-print {
     display: none;
   }
 
@@ -569,5 +663,20 @@ p {
   @page {
     size: letter landscape;
     margin: 0.25in;
+  }
+
+  .score-sheet-page {
+    background: #fff;
+    padding: 0;
+  }
+
+  .score-sheet {
+    width: 100%;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .score-sheet-section {
+    break-inside: avoid;
   }
 }

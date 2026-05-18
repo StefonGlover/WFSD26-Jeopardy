@@ -19,7 +19,10 @@ html {
   min-height: 100%;
   background:
     linear-gradient(120deg, rgba(0, 0, 0, 0.94), rgba(55, 0, 0, 0.86)),
-    url("assets/generated/digital-screen.png") center / cover fixed;
+    image-set(
+      url("assets/generated/digital-screen.webp") type("image/webp"),
+      url("assets/generated/digital-screen.png") type("image/png")
+    ) center / cover fixed;
   color: var(--white);
   font-family: Arial, Helvetica, sans-serif;
 }
@@ -224,6 +227,11 @@ body.presenter-mode .header-actions {
   border-color: var(--coke-red);
 }
 
+.primary-button.danger {
+  background: #9d0000;
+  border-color: #c90000;
+}
+
 .score-button {
   padding: 0 14px;
 }
@@ -242,6 +250,12 @@ body.presenter-mode .header-actions {
   background: #8a5a00;
   border-color: #b87800;
   color: var(--white);
+}
+
+.score-button.neutral {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 209, 92, 0.42);
+  color: var(--gold);
 }
 
 .scoreboard {
@@ -500,6 +514,14 @@ body.presenter-mode .header-actions {
   box-shadow: 0 0 18px rgba(255, 209, 92, 0.12);
 }
 
+.score-sheet-link {
+  width: 100%;
+  margin-top: 10px;
+  border-color: rgba(255, 209, 92, 0.38);
+  color: var(--gold);
+  background: rgba(255, 209, 92, 0.1);
+}
+
 .score-toast {
   position: fixed;
   left: 50%;
@@ -602,6 +624,10 @@ dialog::backdrop {
   display: grid;
   gap: 12px;
   margin: 18px 0;
+}
+
+.confirm-panel {
+  width: min(640px, calc(100vw - 28px));
 }
 
 .team-fields label,

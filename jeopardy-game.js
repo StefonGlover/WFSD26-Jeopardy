@@ -1,9 +1,13 @@
-const gameData = window.JeopardyData;
+const builtInGameData = window.JeopardyData;
+let gameData = cloneData(builtInGameData);
 const SOUND_STORAGE_KEY = "jeopardy-sound-muted";
 const GAME_STATE_STORAGE_KEY = "wfsd-jeopardy-game-state-v1";
 const dialogReturnFocus = new WeakMap();
 let toastTimer = null;
 let setupDraftTeams = null;
+let pendingSavedState = null;
+let confirmResolver = null;
+const mobileBoardQuery = window.matchMedia?.("(max-width: 980px)");
 
 const state = {
   teams: [
@@ -115,6 +119,31 @@ const finalScoreList = document.getElementById("finalScoreList");
 const pledgeCard = document.getElementById("pledgeCard");
 const debriefTakeaways = document.getElementById("debriefTakeaways");
 const scoreToast = document.getElementById("scoreToast");
+const resumeDialog = document.getElementById("resumeDialog");
+const resumeSummary = document.getElementById("resumeSummary");
+const confirmDialog = document.getElementById("confirmDialog");
+const confirmKicker = document.getElementById("confirmKicker");
+const confirmTitle = document.getElementById("confirmTitle");
+const confirmMessage = document.getElementById("confirmMessage");
+const confirmAcceptButton = document.getElementById("confirmAcceptButton");
+const confirmCancelButton = document.getElementById("confirmCancelButton");
+
+function cloneData(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function clearElement(element) {
+  if (element) {
+    element.replaceChildren();
+  }
+}
+
+function textElement(tagName, text, className) {
+  const element = document.createElement(tagName);
+  if (className) element.className = className;
+  element.textContent = text ?? "";
+  return element;
+}
 
 function clueId(categoryIndex, clueIndex) {
   return `${categoryIndex}-${clueIndex}`;
@@ -247,16 +276,37 @@ function saveState() {
   }
 }
 
-function loadState() {
+function readSavedState() {
   try {
     const rawState = window.localStorage.getItem(GAME_STATE_STORAGE_KEY);
-    if (!rawState) return false;
+    if (!rawState) return null;
     const savedState = JSON.parse(rawState);
-    if (savedState?.version !== 1) return false;
-    return restoreState(savedState, { reopenDialogs: true });
+    if (savedState?.version !== 1) return null;
+    return savedState;
   } catch (error) {
-    return false;
+    return null;
   }
+}
+
+function loadState(snapshot = readSavedState()) {
+  return restoreState(snapshot, { reopenDialogs: true });
+}
+
+function hasMeaningfulSavedState(snapshot) {
+  if (!snapshot) return false;
+  const hasScore = Array.isArray(snapshot.teams) && snapshot.teams.some((team) => Number(team.score) !== 0);
+  const hasTeamEdits = Array.isArray(snapshot.teams) && snapshot.teams.some((team, index) => team.name && team.name !== `Team ${index + 1}`);
+  return Boolean(
+    hasScore ||
+    hasTeamEdits ||
+    snapshot.usedClues?.length ||
+    snapshot.actionHistory?.length ||
+    snapshot.currentClue ||
+    snapshot.finalWagersLocked ||
+    snapshot.finalResponseRevealed ||
+    snapshot.finalComplete ||
+    snapshot.presenterMode
+  );
 }
 
 function clearSavedState() {
@@ -285,15 +335,15 @@ function restoreDialogFocus(dialog) {
   dialogReturnFocus.delete(dialog);
 }
 
-function showDialog(dialog, returnFocusElement = document.activeElement) {
+function showDialog(dialog, returnFocusElement = document.activeElement, { persist = true } = {}) {
   rememberDialogFocus(dialog, returnFocusElement);
   if (typeof dialog.showModal === "function") {
     dialog.showModal();
-    saveState();
+    if (persist) saveState();
     return;
   }
   dialog.setAttribute("open", "");
-  saveState();
+  if (persist) saveState();
 }
 
 function closeDialog(dialog) {
@@ -320,13 +370,49 @@ function closeGameDialogs() {
   });
 }
 
-function closeClueFromHost() {
+function confirmAction({
+  kicker = "Host Check",
+  title = "Confirm Action",
+  message = "Continue?",
+  confirmLabel = "Continue",
+  cancelLabel = "Cancel",
+  variant = "primary"
+} = {}) {
+  if (!confirmDialog) return Promise.resolve(false);
+  confirmKicker.textContent = kicker;
+  confirmTitle.textContent = title;
+  confirmMessage.textContent = message;
+  confirmAcceptButton.textContent = confirmLabel;
+  confirmCancelButton.textContent = cancelLabel;
+  confirmAcceptButton.classList.toggle("danger", variant === "danger");
+  showDialog(confirmDialog, document.activeElement, { persist: false });
+  confirmAcceptButton.focus();
+  return new Promise((resolve) => {
+    confirmResolver = resolve;
+  });
+}
+
+function resolveConfirm(confirmed) {
+  if (confirmResolver) {
+    confirmResolver(confirmed);
+    confirmResolver = null;
+  }
+  closeDialog(confirmDialog);
+}
+
+async function closeClueFromHost() {
   if (state.currentClue?.stealOpen && !state.currentClue.resolved) return;
   const revealedNeedsResolution = state.currentClue?.revealed && !state.currentClue.resolved && !state.currentClue.noScore;
   if (revealedNeedsResolution) {
-    const confirmed = window.confirm("This response has been revealed. Close the clue and mark it as No Score?");
+    const confirmed = await confirmAction({
+      title: "Close This Clue?",
+      message: "The response has been revealed. Closing now will mark this clue as No Score.",
+      confirmLabel: "Close As No Score",
+      variant: "danger"
+    });
     if (!confirmed) return;
     noScore();
+    return;
   }
   closeDialog(clueDialog);
   saveState();
@@ -385,14 +471,14 @@ function renderGlossary(strip, item) {
     { label: "Signal", text: item.riskCard.signal, title: glossary.signal },
     { label: "Solution", text: item.riskCard.action, title: glossary.solution }
   ];
-  strip.innerHTML = chips
-    .map((chip) => `
-      <article class="glossary-chip" title="${chip.title}">
-        <span>${chip.label}</span>
-        <p>${chip.text}</p>
-      </article>
-    `)
-    .join("");
+  clearElement(strip);
+  chips.forEach((chip) => {
+    const article = document.createElement("article");
+    article.className = "glossary-chip";
+    article.title = chip.title;
+    article.append(textElement("span", chip.label), textElement("p", chip.text));
+    strip.appendChild(article);
+  });
 }
 
 function updateBoardStatus() {
@@ -519,6 +605,24 @@ function currentClueScoreValue() {
   return state.currentClue.clue.value * (state.currentClue.isChallenge ? 2 : 1);
 }
 
+function getVisual(category, clue) {
+  const clueVisual = clue?.visual || {};
+  return {
+    color: clueVisual.color || category?.visual?.color || "var(--coke-red)",
+    image: clueVisual.image || clue?.image || category?.visual?.image || "assets/generated/station-myth-fact.png"
+  };
+}
+
+function webpPath(path) {
+  return String(path || "").replace(/\.png$/i, ".webp");
+}
+
+function cssImageValue(path) {
+  const source = path || "assets/generated/station-myth-fact.png";
+  if (!/\.png$/i.test(source)) return `url("${source}")`;
+  return `image-set(url("${webpPath(source)}") type("image/webp"), url("${source}") type("image/png"))`;
+}
+
 function getClueHostStage() {
   if (!state.currentClue) return "clue";
   if (state.currentClue.resolved || state.currentClue.noScore) return "closed";
@@ -617,74 +721,11 @@ function tone(audio, frequency, start, duration, volume, type = "sine") {
 }
 
 function getSoundPattern(kind) {
-  return {
-    tile: [{ frequency: 220, start: 0, duration: 0.08, volume: 0.35, type: "triangle" }],
-    reveal: [
-      { frequency: 420, start: 0, duration: 0.11, volume: 0.32, type: "sine" },
-      { frequency: 660, start: 0.08, duration: 0.14, volume: 0.28, type: "sine" }
-    ],
-    correct: [
-      { frequency: 523.25, start: 0, duration: 0.12, volume: 0.34, type: "sine" },
-      { frequency: 783.99, start: 0.1, duration: 0.18, volume: 0.32, type: "sine" }
-    ],
-    incorrect: [
-      { frequency: 164.81, start: 0, duration: 0.16, volume: 0.3, type: "sawtooth" },
-      { frequency: 123.47, start: 0.11, duration: 0.2, volume: 0.26, type: "sawtooth" }
-    ],
-    winner: [
-      { frequency: 523.25, start: 0, duration: 0.13, volume: 0.32, type: "triangle" },
-      { frequency: 659.25, start: 0.11, duration: 0.13, volume: 0.32, type: "triangle" },
-      { frequency: 783.99, start: 0.22, duration: 0.15, volume: 0.34, type: "triangle" },
-      { frequency: 1046.5, start: 0.36, duration: 0.28, volume: 0.3, type: "sine" }
-    ]
-  }[kind] || [];
-}
-
-function synthSample(phase, type) {
-  if (type === "sawtooth") return 2 * (phase / (Math.PI * 2) - Math.floor(phase / (Math.PI * 2) + 0.5));
-  if (type === "triangle") return (2 / Math.PI) * Math.asin(Math.sin(phase));
-  return Math.sin(phase);
+  return window.JeopardySound?.getPattern(kind) || [];
 }
 
 function makeWavUrl(pattern) {
-  const sampleRate = 22050;
-  const totalSeconds = Math.max(...pattern.map((item) => item.start + item.duration), 0.12) + 0.04;
-  const sampleCount = Math.ceil(totalSeconds * sampleRate);
-  const dataSize = sampleCount * 2;
-  const buffer = new ArrayBuffer(44 + dataSize);
-  const view = new DataView(buffer);
-  const writeText = (offset, text) => [...text].forEach((character, index) => {
-    view.setUint8(offset + index, character.charCodeAt(0));
-  });
-
-  writeText(0, "RIFF");
-  view.setUint32(4, 36 + dataSize, true);
-  writeText(8, "WAVE");
-  writeText(12, "fmt ");
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeText(36, "data");
-  view.setUint32(40, dataSize, true);
-
-  for (let sampleIndex = 0; sampleIndex < sampleCount; sampleIndex += 1) {
-    const time = sampleIndex / sampleRate;
-    const value = pattern.reduce((sum, item) => {
-      if (time < item.start || time > item.start + item.duration) return sum;
-      const localTime = time - item.start;
-      const fadeIn = Math.min(1, localTime / 0.015);
-      const fadeOut = Math.min(1, (item.duration - localTime) / 0.035);
-      const envelope = Math.max(0, Math.min(fadeIn, fadeOut));
-      return sum + synthSample(localTime * item.frequency * Math.PI * 2, item.type) * item.volume * envelope;
-    }, 0);
-    view.setInt16(44 + sampleIndex * 2, Math.max(-1, Math.min(1, value)) * 0x7fff, true);
-  }
-
-  return URL.createObjectURL(new Blob([buffer], { type: "audio/wav" }));
+  return window.JeopardySound?.makeWavUrl(pattern) || "";
 }
 
 async function playFallbackSound(kind) {
@@ -692,6 +733,7 @@ async function playFallbackSound(kind) {
   const pattern = getSoundPattern(kind);
   if (!pattern.length) return;
   const url = makeWavUrl(pattern);
+  if (!url) return;
   const audio = new Audio(url);
   audio.volume = 0.9;
   audio.addEventListener("ended", () => URL.revokeObjectURL(url), { once: true });
@@ -727,7 +769,7 @@ async function toggleSound() {
 }
 
 function renderScoreboard() {
-  scoreboard.innerHTML = "";
+  clearElement(scoreboard);
   state.teams.forEach((team, index) => {
     const card = document.createElement("button");
     card.type = "button";
@@ -750,14 +792,18 @@ function renderScoreboard() {
 }
 
 function renderTeamSelect() {
-  modalTeamSelect.innerHTML = state.teams
-    .map((team, index) => `<option value="${index}">${escapeHTML(team.name)}</option>`)
-    .join("");
+  clearElement(modalTeamSelect);
+  state.teams.forEach((team, index) => {
+    const option = document.createElement("option");
+    option.value = String(index);
+    option.textContent = team.name;
+    modalTeamSelect.appendChild(option);
+  });
   modalTeamSelect.value = String(state.activeTeam);
 }
 
 function renderBoard() {
-  gameBoard.innerHTML = "";
+  clearElement(gameBoard);
   gameBoard.style.setProperty("--category-count", gameData.categories.length);
   state.mobileCategoryIndex = Math.min(state.mobileCategoryIndex, gameData.categories.length - 1);
 
@@ -766,7 +812,7 @@ function renderBoard() {
     heading.className = "category-heading";
     heading.textContent = category.shortName;
     heading.style.setProperty("--category-accent", category.visual?.color || "var(--coke-red)");
-    heading.style.setProperty("--category-bg", `url("${category.visual?.image || "assets/generated/station-myth-fact.png"}")`);
+    heading.style.setProperty("--category-bg", cssImageValue(category.visual?.image || "assets/generated/station-myth-fact.png"));
     heading.dataset.categoryId = category.id;
     gameBoard.appendChild(heading);
   });
@@ -792,7 +838,7 @@ function renderBoard() {
 
 function renderMobileBoard() {
   if (!mobileCategoryNav || !mobileBoard) return;
-  mobileCategoryNav.innerHTML = "";
+  clearElement(mobileCategoryNav);
   gameData.categories.forEach((category, categoryIndex) => {
     const button = document.createElement("button");
     button.type = "button";
@@ -810,14 +856,14 @@ function renderMobileBoard() {
 
   const category = gameData.categories[state.mobileCategoryIndex];
   if (!category) {
-    mobileBoard.innerHTML = "";
+    clearElement(mobileBoard);
     return;
   }
   mobileBoard.style.setProperty("--category-accent", category.visual?.color || "var(--coke-red)");
-  mobileBoard.innerHTML = "";
+  clearElement(mobileBoard);
   const heading = document.createElement("div");
   heading.className = "mobile-board-heading";
-  heading.innerHTML = `<span>${escapeHTML(category.name)}</span><p>${escapeHTML(category.accent)}</p>`;
+  heading.append(textElement("span", category.name), textElement("p", category.accent));
   mobileBoard.appendChild(heading);
   category.clues.forEach((clue, clueIndex) => {
     const id = clueId(state.mobileCategoryIndex, clueIndex);
@@ -825,15 +871,32 @@ function renderMobileBoard() {
     tile.type = "button";
     tile.className = `mobile-clue-tile${state.usedClues.has(id) ? " used" : ""}`;
     tile.disabled = state.usedClues.has(id) || state.finalComplete;
-    tile.innerHTML = `<strong>${clue.value}</strong><span>${state.usedClues.has(id) ? "Used" : clue.tag}</span>`;
+    tile.append(
+      textElement("strong", clue.value),
+      textElement("span", state.usedClues.has(id) ? "Used" : clue.tag)
+    );
     tile.setAttribute("aria-label", `${category.name} for ${clue.value} points`);
     tile.addEventListener("click", () => openClue(state.mobileCategoryIndex, clueIndex));
     mobileBoard.appendChild(tile);
   });
+  updateBoardModeAccessibility();
+}
+
+function setRegionInactive(region, inactive) {
+  if (!region) return;
+  region.toggleAttribute("inert", inactive);
+  region.setAttribute("aria-hidden", inactive ? "true" : "false");
+}
+
+function updateBoardModeAccessibility() {
+  const mobileMode = Boolean(mobileBoardQuery?.matches);
+  setRegionInactive(gameBoard, mobileMode);
+  setRegionInactive(mobileCategoryNav, !mobileMode);
+  setRegionInactive(mobileBoard, !mobileMode);
 }
 
 function renderSetupFields(teams = state.teams) {
-  teamFields.innerHTML = "";
+  clearElement(teamFields);
   teams.forEach((team, index) => {
     const label = document.createElement("label");
     label.textContent = `Team ${index + 1}`;
@@ -884,9 +947,10 @@ function saveTeams() {
 function renderCurrentClueView() {
   if (!state.currentClue) return;
   const { category, clue, isChallenge } = state.currentClue;
+  const visual = getVisual(category, clue);
   clueMeta.textContent = `${category.name} - ${isChallenge ? clue.value * 2 : clue.value} Points`;
-  cluePanel.style.setProperty("--category-accent", category.visual?.color || "var(--coke-red)");
-  cluePanel.style.setProperty("--category-image", `url("${category.visual?.image || "assets/generated/station-myth-fact.png"}")`);
+  cluePanel.style.setProperty("--category-accent", visual.color);
+  cluePanel.style.setProperty("--category-image", cssImageValue(visual.image));
   cluePanel.dataset.categoryId = category.id;
   categoryPrompt.hidden = true;
   renderClueStinger(category, isChallenge, false);
@@ -977,10 +1041,22 @@ function animateScore(teamIndex, multiplier) {
   }
 }
 
+function getNextUnscoredTeamIndex(startIndex) {
+  if (!state.currentClue) return startIndex;
+  for (let offset = 1; offset <= state.teams.length; offset += 1) {
+    const teamIndex = (startIndex + offset) % state.teams.length;
+    if (!state.currentClue.scoredTeams.has(teamIndex)) {
+      return teamIndex;
+    }
+  }
+  return startIndex;
+}
+
 function applyScore(multiplier) {
   if (!state.currentClue) return;
   const teamIndex = Number(modalTeamSelect.value);
   const wasStealAttempt = Boolean(state.currentClue.stealOpen);
+  let nextStealTeamIndex = null;
   if (
     state.currentClue.noScore ||
     state.currentClue.resolved ||
@@ -1004,17 +1080,21 @@ function applyScore(multiplier) {
     }
   } else {
     state.currentClue.stealOpen = true;
+    nextStealTeamIndex = getNextUnscoredTeamIndex(teamIndex);
   }
   renderScoreboard();
   animateScore(teamIndex, multiplier);
   renderTeamSelect();
+  if (nextStealTeamIndex !== null) {
+    modalTeamSelect.value = String(nextStealTeamIndex);
+  }
   updateScoreButtons();
   if (multiplier > 0) {
     hostNote.textContent = `${team.name} earned ${value} points. This clue is closed.`;
   } else if (state.currentClue.resolved) {
     hostNote.textContent = `${team.name} lost ${value} points. The steal attempt is complete and this clue is closed.`;
   } else {
-    hostNote.textContent = `${team.name} lost ${value} points. Steal available: choose another team, or use No Score to close the clue.`;
+    hostNote.textContent = `${team.name} lost ${value} points. Steal available: score the selected team, choose another team, or use Close Clue.`;
   }
   recordHistory({
     title: `${state.currentClue.category.name} ${state.currentClue.clue.value}`,
@@ -1025,11 +1105,28 @@ function applyScore(multiplier) {
   updateBoardStatus();
   showToast(`${team.name} ${formatDelta(delta)}`, multiplier > 0 ? "positive" : "negative");
   saveState();
+  if (state.currentClue.resolved) {
+    closeDialog(clueDialog);
+  } else if (nextStealTeamIndex !== null) {
+    modalTeamSelect.focus();
+  }
 }
 
 function noScore() {
   if (!state.currentClue) return;
   const label = `${state.currentClue.category.name} ${state.currentClue.clue.value} closed`;
+  const closingSteal = state.currentClue.stealOpen && !state.currentClue.resolved && state.currentClue.scoredTeams.size > 0;
+  if (closingSteal) {
+    state.currentClue.stealOpen = false;
+    state.currentClue.resolved = true;
+    updateScoreButtons();
+    hostNote.textContent = "Clue closed with no steal score.";
+    updateBoardStatus();
+    showToast(label, "neutral");
+    saveState();
+    closeDialog(clueDialog);
+    return;
+  }
   captureUndo(label);
   state.currentClue.noScore = true;
   state.currentClue.resolved = true;
@@ -1046,6 +1143,7 @@ function noScore() {
   updateBoardStatus();
   showToast(label, "neutral");
   saveState();
+  closeDialog(clueDialog);
 }
 
 function updateScoreButtons() {
@@ -1079,20 +1177,24 @@ function updateHostNoteForCurrentClue() {
     return;
   }
   if (stage === "steal") {
-    hostNote.textContent = "Steal available: choose another team, or use No Score to close the clue.";
+    hostNote.textContent = "Steal available: score the selected team, choose another team, or use Close Clue to return to the board.";
     return;
   }
   if (stage === "response") {
-    hostNote.textContent = "Response revealed. Score the selected team, or mark No Score to close the clue.";
+    hostNote.textContent = "Response revealed. Score the selected team or mark No Score to return to the board.";
     return;
   }
   hostNote.textContent = `${state.teams[state.activeTeam].name} has about 30 seconds. The host may allow one steal after a miss.`;
 }
 
-function resetGame() {
-  const confirmed = window.confirm("Reset scores, used tiles, and Final Jeopardy state?");
-  if (!confirmed) return;
-  state.teams = state.teams.map((team) => ({ ...team, score: 0 }));
+function resetGameState({ keepTeamNames = true } = {}) {
+  state.teams = keepTeamNames
+    ? state.teams.map((team) => ({ ...team, score: 0 }))
+    : [
+      { name: "Team 1", score: 0 },
+      { name: "Team 2", score: 0 },
+      { name: "Team 3", score: 0 }
+    ];
   state.activeTeam = 0;
   state.usedClues.clear();
   state.currentClue = null;
@@ -1110,14 +1212,31 @@ function resetGame() {
   state.mobileCategoryIndex = 0;
   updateFinalButton();
   stopTimer();
+}
+
+function renderFreshGame({ persist = true } = {}) {
+  seedChallengeClue();
   renderScoreboard();
   renderTeamSelect();
   renderBoard();
   renderHostNotes();
   updateUndoButton();
   updateBoardStatus("Game reset. Choose a team, then choose a clue.");
-  clearSavedState();
   closeGameDialogs();
+  if (persist) saveState();
+}
+
+async function resetGame() {
+  const confirmed = await confirmAction({
+    title: "Reset Game?",
+    message: "This clears scores, used tiles, recent plays, and Final Jeopardy progress on this device.",
+    confirmLabel: "Reset Game",
+    variant: "danger"
+  });
+  if (!confirmed) return;
+  resetGameState();
+  clearSavedState();
+  renderFreshGame({ persist: false });
   showToast("Game reset", "neutral");
 }
 
@@ -1142,6 +1261,9 @@ function openFinal() {
     return;
   }
   finalCategory.textContent = gameData.finalJeopardy.category;
+  const finalVisual = gameData.finalJeopardy.visual || {};
+  finalPanel.style.setProperty("--category-accent", finalVisual.color || "var(--coke-red)");
+  finalPanel.style.setProperty("--category-image", cssImageValue(finalVisual.image || "assets/generated/digital-screen.png"));
   finalResponse.textContent = gameData.finalJeopardy.response;
   if (finalAcceptanceStrip) {
     finalAcceptanceStrip.hidden = !gameData.finalJeopardy.hostAccepts;
@@ -1173,7 +1295,7 @@ function renderFinalPrompt() {
 }
 
 function renderWagers() {
-  wagerGrid.innerHTML = "";
+  clearElement(wagerGrid);
   state.teams.forEach((team, index) => {
     const card = document.createElement("article");
     const isScored = state.finalScoredTeams.has(index);
@@ -1184,21 +1306,52 @@ function renderWagers() {
     const storedWager = Math.max(0, Number(state.finalWagers[index]) || 0);
     const wager = state.finalWagersLocked ? storedWager : Math.min(maxWager, storedWager);
     state.finalWagers[index] = wager;
-    const teamName = escapeHTML(team.name);
     const showScoreActions = state.finalResponseRevealed || isScored || state.finalComplete;
     card.className = `wager-card${isScored ? " scored" : ""}`;
-    card.innerHTML = `
-      <label>
-        <span>${teamName}</span>
-        <input type="number" min="0" max="${maxWager}" step="100" value="${wager}" data-wager-index="${index}" aria-label="${teamName} wager" ${inputLocked ? "disabled" : ""}>
-      </label>
-      <p class="wager-limit">${state.finalWagersLocked ? "Locked wager" : "Max wager"}: ${formatScore(maxWager)}</p>
-      <div class="wager-actions final-score-actions" ${showScoreActions ? "" : "hidden"}>
-        <button class="score-button positive" type="button" data-final-result="correct" data-team-index="${index}" ${state.finalResponseRevealed && !isScored && !state.finalComplete ? "" : "disabled"}>Full +${wager}</button>
-        <button class="score-button partial" type="button" data-final-result="partial" data-team-index="${index}" ${state.finalResponseRevealed && !isScored && !state.finalComplete ? "" : "disabled"}>Half +${Math.floor(wager / 2)}</button>
-        <button class="score-button negative" type="button" data-final-result="incorrect" data-team-index="${index}" ${state.finalResponseRevealed && !isScored && !state.finalComplete ? "" : "disabled"}>Miss -${wager}</button>
-      </div>
-    `;
+    const label = document.createElement("label");
+    label.appendChild(textElement("span", team.name));
+    const input = document.createElement("input");
+    input.type = "number";
+    input.min = "0";
+    input.max = String(maxWager);
+    input.step = "100";
+    input.value = String(wager);
+    input.dataset.wagerIndex = String(index);
+    input.setAttribute("aria-label", `${team.name} wager`);
+    input.disabled = inputLocked;
+    label.appendChild(input);
+
+    const limit = textElement("p", `${state.finalWagersLocked ? "Locked wager" : "Max wager"}: ${formatScore(maxWager)}`, "wager-limit");
+    const actions = document.createElement("div");
+    actions.className = "wager-actions final-score-actions";
+    actions.hidden = !showScoreActions;
+    const canScore = state.finalResponseRevealed && !isScored && !state.finalComplete;
+    if (wager === 0) {
+      const reviewed = document.createElement("button");
+      reviewed.className = "score-button neutral";
+      reviewed.type = "button";
+      reviewed.dataset.finalResult = "reviewed";
+      reviewed.dataset.teamIndex = String(index);
+      reviewed.disabled = !canScore;
+      reviewed.textContent = "Mark Reviewed";
+      actions.appendChild(reviewed);
+    } else {
+      [
+        { result: "correct", className: "positive", label: `Full +${wager}` },
+        { result: "partial", className: "partial", label: `Half +${Math.floor(wager / 2)}` },
+        { result: "incorrect", className: "negative", label: `Miss -${wager}` }
+      ].forEach((action) => {
+        const button = document.createElement("button");
+        button.className = `score-button ${action.className}`;
+        button.type = "button";
+        button.dataset.finalResult = action.result;
+        button.dataset.teamIndex = String(index);
+        button.disabled = !canScore;
+        button.textContent = action.label;
+        actions.appendChild(button);
+      });
+    }
+    card.append(label, limit, actions);
     wagerGrid.appendChild(card);
   });
 }
@@ -1207,14 +1360,12 @@ function renderFinalRubric() {
   if (!finalRubric || !finalRubricList) return;
   const rubricItems = gameData.finalJeopardy.rubric || [];
   finalRubric.hidden = !state.finalResponseRevealed || !rubricItems.length;
-  finalRubricList.innerHTML = rubricItems
-    .map((item) => `
-      <article>
-        <span>${escapeHTML(item.label)}</span>
-        <p>${escapeHTML(item.text)}</p>
-      </article>
-    `)
-    .join("");
+  clearElement(finalRubricList);
+  rubricItems.forEach((item) => {
+    const article = document.createElement("article");
+    article.append(textElement("span", item.label), textElement("p", item.text));
+    finalRubricList.appendChild(article);
+  });
 }
 
 function renderFinalStage() {
@@ -1301,7 +1452,8 @@ function applyFinalScore(button) {
   const scoring = {
     correct: { delta: wager, type: "positive", sound: "correct", label: "Full" },
     partial: { delta: Math.floor(wager / 2), type: wager ? "positive" : "neutral", sound: "correct", label: "Half" },
-    incorrect: { delta: -wager, type: wager ? "negative" : "neutral", sound: "incorrect", label: "Miss" }
+    incorrect: { delta: -wager, type: wager ? "negative" : "neutral", sound: "incorrect", label: "Miss" },
+    reviewed: { delta: 0, type: "neutral", sound: "reveal", label: "Reviewed" }
   }[result] || { delta: 0, type: "neutral", sound: "reveal", label: "Score" };
   const delta = scoring.delta;
   const resultType = scoring.type;
@@ -1342,9 +1494,46 @@ function applyFinalScore(button) {
   saveState();
 }
 
+function hydrateGameText() {
+  gameTitle.textContent = gameData.title;
+  gameSubtitle.textContent = gameData.subtitle;
+  gameTheme.textContent = gameData.theme;
+  document.title = gameData.title;
+}
+
+function showSavedGamePrompt(snapshot) {
+  pendingSavedState = snapshot;
+  const usedCount = snapshot.usedClues?.length || 0;
+  const teamCount = snapshot.teams?.length || state.teams.length;
+  resumeSummary.textContent = `${usedCount}/${getTotalClues()} clues played with ${teamCount} teams. Resume it or start a clean board.`;
+  showDialog(resumeDialog, document.activeElement, { persist: false });
+  document.getElementById("resumeSavedButton")?.focus();
+}
+
+function resumeSavedGame() {
+  const snapshot = pendingSavedState;
+  pendingSavedState = null;
+  closeDialog(resumeDialog);
+  if (snapshot) {
+    restoreState(snapshot, { reopenDialogs: true });
+  }
+}
+
+function startFreshFromPrompt() {
+  pendingSavedState = null;
+  clearSavedState();
+  closeDialog(resumeDialog);
+  resetGameState({ keepTeamNames: false });
+  renderFreshGame({ persist: true });
+  showToast("Fresh game ready", "neutral");
+}
+
 function renderRules() {
   rulesThemeLens.textContent = gameData.themeLens;
-  rulesList.innerHTML = gameData.rules.map((rule) => `<li>${rule}</li>`).join("");
+  clearElement(rulesList);
+  gameData.rules.forEach((rule) => {
+    rulesList.appendChild(textElement("li", rule));
+  });
 }
 
 function renderHostNotes() {
@@ -1352,44 +1541,40 @@ function renderHostNotes() {
   challengeToggle.checked = state.challengeEnabled;
   challengeToggleLabel.textContent = gameData.challengeClue.label;
   challengeToggleDescription.textContent = gameData.challengeClue.description;
-  hostScriptList.innerHTML = gameData.hostNotes
-    .map((note) => `
-      <article class="host-note-card">
-        <span>${note.title}</span>
-        <p>${note.text}</p>
-      </article>
-    `)
-    .join("");
+  clearElement(hostScriptList);
+  gameData.hostNotes.forEach((note) => {
+    const article = document.createElement("article");
+    article.className = "host-note-card";
+    article.append(textElement("span", note.title), textElement("p", note.text));
+    hostScriptList.appendChild(article);
+  });
   const hostShortcuts = [
     ...gameData.shortcuts,
     { key: "U", action: "Undo last action" },
     { key: "P", action: "Presenter mode" }
   ];
-  shortcutList.innerHTML = hostShortcuts
-    .map((shortcut) => `
-      <article>
-        <kbd>${shortcut.key}</kbd>
-        <span>${shortcut.action}</span>
-      </article>
-    `)
-    .join("");
+  clearElement(shortcutList);
+  hostShortcuts.forEach((shortcut) => {
+    const article = document.createElement("article");
+    article.append(textElement("kbd", shortcut.key), textElement("span", shortcut.action));
+    shortcutList.appendChild(article);
+  });
   renderRecentPlays();
 }
 
 function renderRecentPlays() {
   if (!recentPlayList) return;
   if (!state.actionHistory.length) {
-    recentPlayList.innerHTML = "<p>No plays yet.</p>";
+    recentPlayList.replaceChildren(textElement("p", "No plays yet."));
     return;
   }
-  recentPlayList.innerHTML = state.actionHistory
-    .map((entry) => `
-      <article class="${entry.type || "neutral"}">
-        <span>${escapeHTML(entry.title)}</span>
-        <p>${escapeHTML(entry.detail)}</p>
-      </article>
-    `)
-    .join("");
+  clearElement(recentPlayList);
+  state.actionHistory.forEach((entry) => {
+    const article = document.createElement("article");
+    article.className = entry.type || "neutral";
+    article.append(textElement("span", entry.title), textElement("p", entry.detail));
+    recentPlayList.appendChild(article);
+  });
 }
 
 function renderClueStinger(category, isChallenge, showCategoryPrompt) {
@@ -1442,7 +1627,7 @@ function startTimer() {
 }
 
 function renderWinnerCelebration() {
-  winnerCelebration.innerHTML = "";
+  clearElement(winnerCelebration);
   winnerTitle.classList.remove("winner-title-celebrate");
   void winnerTitle.offsetWidth;
   winnerTitle.classList.add("winner-title-celebrate");
@@ -1462,14 +1647,17 @@ function renderWinnerCelebration() {
     };
   });
 
-  winnerCelebration.innerHTML = particles
-    .map((particle) => `
-      <span
-        class="winner-confetti ${particle.shape}"
-        style="--x: ${particle.x}; --dx: ${particle.dx}px; --delay: ${particle.delay}s; --duration: ${particle.duration}s; --rotate: ${particle.rotate}deg; --confetti-color: ${particle.color};"
-      ></span>
-    `)
-    .join("");
+  particles.forEach((particle) => {
+    const confetti = document.createElement("span");
+    confetti.className = `winner-confetti ${particle.shape}`;
+    confetti.style.setProperty("--x", particle.x);
+    confetti.style.setProperty("--dx", `${particle.dx}px`);
+    confetti.style.setProperty("--delay", `${particle.delay}s`);
+    confetti.style.setProperty("--duration", `${particle.duration}s`);
+    confetti.style.setProperty("--rotate", `${particle.rotate}deg`);
+    confetti.style.setProperty("--confetti-color", particle.color);
+    winnerCelebration.appendChild(confetti);
+  });
 }
 
 function renderEndScreen() {
@@ -1479,21 +1667,20 @@ function renderEndScreen() {
   renderWinnerCelebration();
   winnerTitle.textContent = winners.length > 1 ? `Winners: ${winners.join(" + ")}` : `Winner: ${winners[0]}`;
   closeoutText.textContent = gameData.closeout;
-  finalScoreList.innerHTML = ranked
-    .map((team, index) => `<div style="--score-index: ${index};"><span>${escapeHTML(team.name)}</span><strong>${formatScore(team.score)}</strong></div>`)
-    .join("");
-  pledgeCard.innerHTML = `
-    <span>${gameData.pledge.title}</span>
-    <p>${gameData.pledge.text}</p>
-  `;
-  debriefTakeaways.innerHTML = gameData.debriefTakeaways
-    .map((takeaway) => `
-      <article>
-        <span>${takeaway.title}</span>
-        <p>${takeaway.text}</p>
-      </article>
-    `)
-    .join("");
+  clearElement(finalScoreList);
+  ranked.forEach((team, index) => {
+    const row = document.createElement("div");
+    row.style.setProperty("--score-index", index);
+    row.append(textElement("span", team.name), textElement("strong", formatScore(team.score)));
+    finalScoreList.appendChild(row);
+  });
+  pledgeCard.replaceChildren(textElement("span", gameData.pledge.title), textElement("p", gameData.pledge.text));
+  clearElement(debriefTakeaways);
+  gameData.debriefTakeaways.forEach((takeaway) => {
+    const article = document.createElement("article");
+    article.append(textElement("span", takeaway.title), textElement("p", takeaway.text));
+    debriefTakeaways.appendChild(article);
+  });
 }
 
 function isTypingTarget(target) {
@@ -1511,39 +1698,25 @@ function isDialogOpen(dialog) {
 }
 
 function getActiveDialog() {
-  return [endDialog, finalDialog, clueDialog, hostNotesDialog, rulesDialog, setupDialog].find(isDialogOpen) || null;
+  return [
+    confirmDialog,
+    resumeDialog,
+    endDialog,
+    finalDialog,
+    clueDialog,
+    hostNotesDialog,
+    rulesDialog,
+    setupDialog
+  ].find(isDialogOpen) || null;
 }
 
 function getFocusableElements(container) {
-  return [...container.querySelectorAll(
-    'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
-  )].filter((element) => !element.hidden && element.getClientRects().length > 0);
+  return window.JeopardyDialogs?.getFocusableElements(container) || [];
 }
 
 function trapDialogTab(event) {
-  if (event.key !== "Tab") return false;
   const dialog = getActiveDialog();
-  if (!dialog) return false;
-  const focusable = getFocusableElements(dialog);
-  if (!focusable.length) return false;
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-  if (!dialog.contains(document.activeElement)) {
-    event.preventDefault();
-    first.focus();
-    return true;
-  }
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault();
-    last.focus();
-    return true;
-  }
-  if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first.focus();
-    return true;
-  }
-  return false;
+  return window.JeopardyDialogs?.trapTab(event, dialog) || false;
 }
 
 function clickIfAvailable(button) {
@@ -1567,6 +1740,8 @@ function handleKeyboardShortcuts(event) {
   const nonGameDialogOpen = isDialogOpen(setupDialog) ||
     isDialogOpen(rulesDialog) ||
     isDialogOpen(hostNotesDialog) ||
+    isDialogOpen(resumeDialog) ||
+    isDialogOpen(confirmDialog) ||
     isDialogOpen(endDialog);
   if (nonGameDialogOpen) return;
 
@@ -1613,6 +1788,8 @@ function handleKeyboardShortcuts(event) {
     !isDialogOpen(finalDialog) &&
     !isDialogOpen(rulesDialog) &&
     !isDialogOpen(hostNotesDialog) &&
+    !isDialogOpen(resumeDialog) &&
+    !isDialogOpen(confirmDialog) &&
     !isDialogOpen(endDialog)
   ) {
     event.preventDefault();
@@ -1634,8 +1811,12 @@ function bindEvents() {
   document.getElementById("resetButton").addEventListener("click", resetGame);
   document.getElementById("nextTeamButton").addEventListener("click", nextTeam);
   finalButton.addEventListener("click", openFinal);
-  endButton.addEventListener("click", (event) => {
-    if (!state.finalComplete && !window.confirm("Final Jeopardy is not complete. Show current scores anyway?")) {
+  endButton.addEventListener("click", async (event) => {
+    if (!state.finalComplete && !(await confirmAction({
+      title: "Show Current Scores?",
+      message: "Final Jeopardy is not complete. You can still show the current leaderboard for a quick closeout.",
+      confirmLabel: "Show Scores"
+    }))) {
       return;
     }
     showResultsDialog(event.currentTarget);
@@ -1649,13 +1830,23 @@ function bindEvents() {
   document.getElementById("closeFinalButton").addEventListener("click", () => closeDialog(finalDialog));
   finalUndoButton.addEventListener("click", undoLastAction);
   document.getElementById("closeEndButton").addEventListener("click", () => closeDialog(endDialog));
-  [setupDialog, clueDialog, finalDialog, hostNotesDialog, rulesDialog, endDialog].forEach((dialog) => {
+  document.getElementById("resumeSavedButton").addEventListener("click", resumeSavedGame);
+  document.getElementById("startFreshButton").addEventListener("click", startFreshFromPrompt);
+  confirmAcceptButton.addEventListener("click", () => resolveConfirm(true));
+  confirmCancelButton.addEventListener("click", () => resolveConfirm(false));
+  confirmDialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    resolveConfirm(false);
+  });
+  [setupDialog, clueDialog, finalDialog, hostNotesDialog, rulesDialog, endDialog, resumeDialog, confirmDialog].forEach((dialog) => {
     dialog.addEventListener("close", () => {
       if (dialog === setupDialog) {
         setupDraftTeams = null;
       }
       restoreDialogFocus(dialog);
-      saveState();
+      if (dialog !== resumeDialog && dialog !== confirmDialog) {
+        saveState();
+      }
     });
   });
   document.getElementById("addTeamButton").addEventListener("click", () => {
@@ -1710,28 +1901,30 @@ function bindEvents() {
     const button = event.target.closest("button[data-final-result]");
     if (button) applyFinalScore(button);
   });
+  if (mobileBoardQuery?.addEventListener) {
+    mobileBoardQuery.addEventListener("change", updateBoardModeAccessibility);
+  } else if (mobileBoardQuery?.addListener) {
+    mobileBoardQuery.addListener(updateBoardModeAccessibility);
+  }
   document.addEventListener("keydown", handleKeyboardShortcuts);
 }
 
 function init() {
   state.soundMuted = readSoundPreference();
   updateSoundButton();
-  gameTitle.textContent = gameData.title;
-  gameSubtitle.textContent = gameData.subtitle;
-  gameTheme.textContent = gameData.theme;
+  hydrateGameText();
   renderRules();
   bindEvents();
-  const resumed = loadState();
-  if (!resumed) {
-    seedChallengeClue();
-    renderScoreboard();
-    renderTeamSelect();
-    renderBoard();
-    renderHostNotes();
-    updateBoardStatus();
-    updateUndoButton();
-    applyPresenterMode();
+  const savedState = readSavedState();
+  if (hasMeaningfulSavedState(savedState)) {
+    resetGameState();
+    renderFreshGame({ persist: false });
+    showSavedGamePrompt(savedState);
+    return;
   }
+  if (savedState && loadState(savedState)) return;
+  resetGameState();
+  renderFreshGame({ persist: false });
 }
 
 init();

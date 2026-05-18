@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Safe Food, Fast Thinking Host Score Sheet</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body class="score-sheet-page">
+    <main class="score-sheet">
+      <header class="score-sheet-header">
+        <div>
+          <p class="eyebrow">World Food Safety Day 2026</p>
+          <h1>Host Score Sheet</h1>
+          <p>Use this page for printed backup scoring, wagers, and host notes.</p>
+        </div>
+        <button class="primary-button no-print" type="button" id="printScoreSheetButton">Print Score Sheet</button>
+      </header>
+
+      <section class="score-sheet-section">
+        <h2>Teams</h2>
+        <div class="score-team-grid" id="scoreTeamGrid"></div>
+      </section>
+
+      <section class="score-sheet-section">
+        <h2>Board Tracker</h2>
+        <table class="score-board-table" id="scoreBoardTable"></table>
+      </section>
+
+      <section class="score-sheet-section final-score-sheet">
+        <h2>Final Jeopardy</h2>
+        <div class="final-score-grid" id="finalScoreGrid"></div>
+      </section>
+
+      <section class="score-sheet-section">
+        <h2>Host Notes</h2>
+        <div class="score-note-grid">
+          <article><span>Signals</span><p></p></article>
+          <article><span>Steals / disputes</span><p></p></article>
+          <article><span>Debrief commitments</span><p></p></article>
+        </div>
+      </section>
+    </main>
+
+    <script src="jeopardy-data.js"></script>
+    <script>
+      const stateKey = "wfsd-jeopardy-game-state-v1";
+      const data = window.JeopardyData;
+      const saved = (() => {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(stateKey) || "null");
+          return parsed?.version === 1 ? parsed : null;
+        } catch (error) {
+          return null;
+        }
+      })();
+      const teams = saved?.teams?.length ? saved.teams : [
+        { name: "Team 1", score: 0 },
+        { name: "Team 2", score: 0 },
+        { name: "Team 3", score: 0 }
+      ];
+
+      const teamGrid = document.getElementById("scoreTeamGrid");
+      teams.forEach((team) => {
+        const card = document.createElement("article");
+        const name = document.createElement("strong");
+        name.textContent = team.name;
+        const score = document.createElement("p");
+        score.textContent = "Score:";
+        card.append(name, score);
+        teamGrid.appendChild(card);
+      });
+
+      const table = document.getElementById("scoreBoardTable");
+      const headRow = document.createElement("tr");
+      data.categories.forEach((category) => {
+        const th = document.createElement("th");
+        th.textContent = category.shortName;
+        headRow.appendChild(th);
+      });
+      const thead = document.createElement("thead");
+      thead.appendChild(headRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      for (let row = 0; row < 5; row += 1) {
+        const tr = document.createElement("tr");
+        data.categories.forEach((category) => {
+          const td = document.createElement("td");
+          td.textContent = category.clues[row]?.value || "";
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+
+      const finalGrid = document.getElementById("finalScoreGrid");
+      teams.forEach((team) => {
+        const card = document.createElement("article");
+        const name = document.createElement("strong");
+        name.textContent = team.name;
+        card.append(name, document.createElement("p"), document.createElement("p"));
+        card.children[1].textContent = "Wager:";
+        card.children[2].textContent = "Result:";
+        finalGrid.appendChild(card);
+      });
+
+      document.getElementById("printScoreSheetButton").addEventListener("click", () => window.print());
+    </script>
+  </body>
+</html>

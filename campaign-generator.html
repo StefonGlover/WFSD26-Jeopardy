@@ -65,6 +65,38 @@
           </div>
         </section>
 
+        <section class="panel-section split">
+          <div>
+            <label for="eventTimeInput">Event time</label>
+            <input id="eventTimeInput" type="text" placeholder="Starts at 2 PM">
+          </div>
+          <div>
+            <label for="eventLocationInput">Event location</label>
+            <input id="eventLocationInput" type="text" placeholder="Main lobby">
+          </div>
+        </section>
+
+        <section class="panel-section">
+          <label for="feedbackUrlInput">Feedback / event URL</label>
+          <input id="feedbackUrlInput" type="url" placeholder="https://...">
+        </section>
+
+        <section class="panel-section">
+          <label for="quizUrlInput">Quiz URL</label>
+          <input id="quizUrlInput" type="url" placeholder="digital-quiz.html">
+        </section>
+
+        <section class="panel-section split">
+          <div>
+            <label for="feedbackQrLabelInput">Feedback QR label</label>
+            <input id="feedbackQrLabelInput" type="text">
+          </div>
+          <div>
+            <label for="quizQrLabelInput">Quiz QR label</label>
+            <input id="quizQrLabelInput" type="text">
+          </div>
+        </section>
+
         <section class="panel-section">
           <label for="imageInput">Swap background image</label>
           <input id="imageInput" type="file" accept="image/*">
@@ -118,6 +150,7 @@
     </section>
 
     <script src="campaign-data.js"></script>
+    <script src="vendor/qrcode.min.js"></script>
     <script src="generator.js"></script>
   </body>
 </html>

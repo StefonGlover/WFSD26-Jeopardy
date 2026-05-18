@@ -1,0 +1,17 @@
+{
+  "name": "safe-food-fast-thinking-kit",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 4178",
+    "check": "node --check jeopardy-game.js && node --check jeopardy-data.js && node --check jeopardy-sound.js && node --check jeopardy-dialogs.js && node --check generator.js && node --check campaign-data.js && git diff --check",
+    "test": "playwright test",
+    "optimize:assets": "node scripts/optimize-assets.mjs",
+    "cache:bust": "node scripts/cache-bust.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.53.0",
+    "sharp": "^0.33.5"
+  }
+}

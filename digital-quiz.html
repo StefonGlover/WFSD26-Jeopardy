@@ -26,7 +26,7 @@
         </div>
         <div class="feedback" id="feedback">Choose Myth or Fact to begin.</div>
         <div class="quiz-footer">
-          <button class="small-button" type="button" id="nextButton">Next</button>
+          <button class="small-button" type="button" id="nextButton" disabled>Next</button>
           <span id="stampStatus">Stamp goal: 4 correct answers</span>
         </div>
       </section>
@@ -83,6 +83,7 @@
         progress.textContent = `Question ${index + 1} of ${questions.length}`;
         feedback.textContent = "Choose Myth or Fact.";
         nextButton.textContent = index === questions.length - 1 ? "Finish" : "Next";
+        nextButton.disabled = true;
         choices.forEach((button) => {
           button.disabled = false;
           button.style.background = "";
@@ -104,6 +105,7 @@
           button.style.color = "";
         });
         nextButton.textContent = "Restart";
+        nextButton.disabled = false;
       }
 
       choices.forEach((button) => {
@@ -118,6 +120,7 @@
           feedback.textContent = `${isCorrect ? "Correct." : "Not quite."} ${current.explanation}`;
           stampStatus.textContent = `Score: ${score} of ${questions.length}`;
           choices.forEach((choice) => choice.disabled = true);
+          nextButton.disabled = false;
         });
       });
 
