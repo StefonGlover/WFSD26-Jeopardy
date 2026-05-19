@@ -472,13 +472,21 @@ button:disabled {
 }
 
 .notes-button {
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 14px;
   color: rgba(255, 255, 255, 0.82);
 }
 
+.score-sheet-button {
+  min-height: 44px;
+  border-color: rgba(255, 209, 92, 0.34);
+  background: rgba(255, 209, 92, 0.08);
+  color: var(--gold);
+  white-space: nowrap;
+}
+
 .undo-button {
-  min-height: 38px;
+  min-height: 44px;
   padding: 0 14px;
   border-color: rgba(255, 255, 255, 0.18);
   color: rgba(255, 255, 255, 0.74);
@@ -1966,15 +1974,18 @@ dialog::backdrop {
 
   .footer-support {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) 1fr 1fr;
+    gap: 8px;
   }
 
   .footer-status {
     flex-direction: row;
   }
 
-  .notes-button {
-    width: auto !important;
+  .notes-button,
+  .score-sheet-button,
+  .undo-button {
+    width: 100% !important;
   }
 
   .footer-flow {

@@ -3,103 +3,30 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="0; url=jeopardy-game.html">
     <title>Safe Food, Fast Thinking</title>
     <link rel="icon" href="assets/generated/coca-cola-logo.svg" type="image/svg+xml">
+    <script>
+      window.location.replace("jeopardy-game.html");
+    </script>
     <style>
-      :root {
-        --coke-red: #f40000;
-        --black: #080000;
-        --gold: #ffd15c;
-        --white: #ffffff;
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
       body {
         min-height: 100vh;
         margin: 0;
         display: grid;
         place-items: center;
-        background:
-          linear-gradient(120deg, rgba(0, 0, 0, 0.94), rgba(87, 0, 0, 0.82)),
-          image-set(
-            url("assets/generated/digital-screen.webp") type("image/webp"),
-            url("assets/generated/digital-screen.png") type("image/png")
-          ) center / cover;
-        color: var(--white);
+        background: #080000;
+        color: #ffffff;
         font-family: Arial, Helvetica, sans-serif;
       }
 
-      main {
-        width: min(860px, calc(100vw - 32px));
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: 8px;
-        background: rgba(0, 0, 0, 0.72);
-        padding: 28px;
-        text-align: center;
-        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.36);
-      }
-
-      img {
-        width: min(190px, 60vw);
-        filter: brightness(0) invert(1);
-      }
-
-      p {
-        color: rgba(255, 255, 255, 0.82);
-        font-weight: 800;
-        line-height: 1.45;
-      }
-
-      .launcher-actions {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-        margin-top: 22px;
-      }
-
       a {
-        display: inline-flex;
-        min-height: 44px;
-        align-items: center;
-        justify-content: center;
-        border-radius: 8px;
-        padding: 0 16px;
-        color: var(--white);
+        color: #ffd15c;
         font-weight: 900;
-        text-decoration: none;
-      }
-
-      .primary {
-        background: var(--coke-red);
-      }
-
-      .secondary {
-        border: 1px solid rgba(255, 255, 255, 0.24);
-        color: var(--gold);
-      }
-
-      @media (max-width: 620px) {
-        .launcher-actions {
-          grid-template-columns: 1fr;
-        }
       }
     </style>
   </head>
   <body>
-    <main>
-      <img src="assets/generated/coca-cola-logo.svg" alt="Coca-Cola">
-      <h1>Safe Food, Fast Thinking</h1>
-      <p>World Food Safety Day 2026 tools for the host, stations, print materials, and scorekeeping.</p>
-      <div class="launcher-actions" aria-label="App launcher">
-        <a class="primary" href="jeopardy-game.html">Play Jeopardy</a>
-        <a class="secondary" href="campaign-generator.html">Campaign Generator</a>
-        <a class="secondary" href="digital-quiz.html">Digital Quiz</a>
-        <a class="secondary" href="print-kit.html">Print Packet</a>
-        <a class="secondary" href="host-score-sheet.html">Host Score Sheet</a>
-      </div>
-    </main>
+    <p>Opening the gameboard. <a href="jeopardy-game.html">Start Safe Food, Fast Thinking</a>.</p>
   </body>
 </html>

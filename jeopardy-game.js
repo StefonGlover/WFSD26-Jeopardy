@@ -235,10 +235,7 @@ function restoreState(snapshot, { reopenDialogs = false } = {}) {
     .map((index) => Number(index))
     .filter((index) => Number.isInteger(index) && index >= 0 && index < state.teams.length));
   syncFinalZeroWagers();
-  state.finalComplete = Boolean(
-    snapshot.finalComplete ||
-    (state.finalResponseRevealed && state.finalScoredTeams.size === state.teams.length)
-  );
+  state.finalComplete = Boolean(snapshot.finalComplete);
   state.mobileCategoryIndex = Math.min(
     Math.max(0, Number(snapshot.mobileCategoryIndex) || 0),
     gameData.categories.length - 1
@@ -867,7 +864,9 @@ function saveTeams() {
   state.activeTeam = Math.min(state.activeTeam, state.teams.length - 1);
   state.finalWagers = state.finalWagers.slice(0, state.teams.length);
   state.finalScoredTeams = new Set([...state.finalScoredTeams].filter((index) => index < state.teams.length));
-  state.finalComplete = state.finalScoredTeams.size === state.teams.length && state.finalResponseRevealed;
+  if (state.finalComplete && !finalReadyForResults()) {
+    state.finalComplete = false;
+  }
   renderScoreboard();
   renderTeamSelect();
   updateBoardStatus();
@@ -1199,10 +1198,6 @@ function openFinal() {
   finalResponseBlock.hidden = !state.finalResponseRevealed;
   renderFinalPrompt();
   renderWagers();
-  if (state.finalResponseRevealed && state.finalScoredTeams.size === state.teams.length) {
-    completeFinalJeopardy();
-    return;
-  }
   renderFinalStage();
   updateFinalControls();
   showDialog(finalDialog);
@@ -1291,6 +1286,8 @@ function renderFinalStage() {
   let activeStep = "wagers";
   if (state.finalComplete) {
     activeStep = "results";
+  } else if (finalReadyForResults()) {
+    activeStep = "results";
   } else if (state.finalResponseRevealed) {
     activeStep = "score";
   } else if (state.finalWagersLocked) {
@@ -1321,6 +1318,12 @@ function updateFinalControls() {
     finalPrimaryButton.textContent = "Results Ready";
     return;
   }
+  if (finalReadyForResults()) {
+    finalPrimaryButton.hidden = false;
+    finalPrimaryButton.disabled = false;
+    finalPrimaryButton.textContent = "Show Results";
+    return;
+  }
   if (state.finalResponseRevealed) {
     finalPrimaryButton.hidden = true;
     finalPrimaryButton.disabled = true;
@@ -1329,7 +1332,7 @@ function updateFinalControls() {
   }
   finalPrimaryButton.hidden = false;
   finalPrimaryButton.disabled = false;
-  finalPrimaryButton.textContent = state.finalWagersLocked ? "Reveal Response" : "Lock Wagers & Reveal Clue";
+  finalPrimaryButton.textContent = state.finalWagersLocked ? "Reveal Final Response" : "Lock Wagers & Reveal Clue";
 }
 
 function normalizeFinalWagers() {
@@ -1366,11 +1369,7 @@ function revealFinal() {
   updateFinalControls();
   renderFinalStage();
   saveState();
-  if (state.finalScoredTeams.size === state.teams.length) {
-    completeFinalJeopardy();
-    return;
-  }
-  wagerGrid.querySelector("button:not(:disabled)")?.focus();
+  (wagerGrid.querySelector("button:not(:disabled)") || finalPrimaryButton)?.focus();
 }
 
 function advanceFinalStage() {
@@ -1381,7 +1380,15 @@ function advanceFinalStage() {
   }
   if (!state.finalResponseRevealed) {
     revealFinal();
+    return;
   }
+  if (finalReadyForResults()) {
+    completeFinalJeopardy();
+  }
+}
+
+function finalReadyForResults() {
+  return state.finalResponseRevealed && state.finalScoredTeams.size === state.teams.length;
 }
 
 function syncFinalZeroWagers() {
@@ -1438,8 +1445,6 @@ function applyFinalScore(button) {
   if (delta !== 0) {
     animateScore(teamIndex, delta > 0 ? 1 : -1);
   }
-  renderFinalStage();
-  updateFinalControls();
   recordHistory({
     title: "Final Jeopardy",
     detail: `${state.teams[teamIndex].name} ${scoring.label} ${formatDelta(delta)}`,
@@ -1447,11 +1452,10 @@ function applyFinalScore(button) {
     type: resultType
   });
   syncFinalZeroWagers();
-  if (state.finalScoredTeams.size === state.teams.length) {
-    completeFinalJeopardy();
-  } else {
-    updateBoardStatus();
-  }
+  renderWagers();
+  renderFinalStage();
+  updateFinalControls();
+  updateBoardStatus();
   showToast(`${state.teams[teamIndex].name} ${scoring.label} ${formatDelta(delta)}`, resultType);
   saveState();
 }

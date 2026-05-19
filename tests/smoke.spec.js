@@ -2,14 +2,31 @@ import { expect, test } from "@playwright/test";
 
 const GAME_STATE_STORAGE_KEY = "wfsd-jeopardy-game-state-v1";
 
-test("launcher and print packet routes are stable", async ({ page }) => {
+test("root route opens directly to the gameboard and print packet route is stable", async ({ page }) => {
   await page.goto("/index.html");
-  await expect(page.getByRole("link", { name: "Play Jeopardy" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Host Score Sheet" })).toBeVisible();
+  await expect(page).toHaveURL(/jeopardy-game\.html$/);
+  await expect(page.getByRole("heading", { name: "Safe Food, Fast Thinking" })).toBeVisible();
 
   await page.goto("/print-kit.html");
   await expect(page).toHaveURL(/campaign-generator\.html#printPacket$/);
   await expect(page.getByRole("heading", { name: "Food Safety Passport Challenge" })).toBeVisible();
+});
+
+test("gameboard exposes host score sheet from footer", async ({ page, context }) => {
+  await page.goto("/jeopardy-game.html?test=score-sheet-footer");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  const scoreSheetLink = page.getByRole("link", { name: "Host Score Sheet" });
+  await expect(scoreSheetLink).toBeVisible();
+  await expect(scoreSheetLink).toHaveAttribute("href", "host-score-sheet.html");
+  await expect(scoreSheetLink).toHaveAttribute("target", "_blank");
+
+  const newPagePromise = context.waitForEvent("page");
+  await scoreSheetLink.click();
+  const scoreSheetPage = await newPagePromise;
+  await expect(scoreSheetPage).toHaveURL(/host-score-sheet\.html$/);
+  await expect(scoreSheetPage.getByRole("heading", { name: "Host Score Sheet" })).toBeVisible();
+  await scoreSheetPage.close();
 });
 
 test("quiz requires an answer before advancing", async ({ page }) => {
@@ -93,13 +110,16 @@ test("no-score auto-close resumes without reopening clue dialog", async ({ page 
   await expect(page.locator("#progressStatus")).toHaveText("1/25");
 });
 
-test("final zero wagers auto-review and open results", async ({ page }) => {
+test("final zero wagers auto-review and require explicit results", async ({ page }) => {
   await page.goto("/jeopardy-game.html?test=final-zero");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.getByRole("button", { name: "Final Jeopardy" }).click();
   await page.getByRole("button", { name: "Lock Wagers & Reveal Clue" }).click();
-  await page.getByRole("button", { name: "Reveal Response" }).click();
+  await page.getByRole("button", { name: "Reveal Final Response" }).click();
+  await expect(page.getByText("Auto-reviewed")).toHaveCount(3);
+  await expect(page.getByRole("heading", { name: /Winner/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Show Results" }).click();
   await expect(page.getByRole("heading", { name: /Winner/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Mark Reviewed" })).toHaveCount(0);
 });
@@ -115,12 +135,15 @@ test("final guided scoring supports half credit and hides early results", async 
   await page.getByRole("button", { name: "Final Jeopardy" }).click();
   await page.getByLabel("Team 1 wager").fill("100");
   await page.getByRole("button", { name: "Lock Wagers & Reveal Clue" }).click();
-  await expect(page.getByRole("button", { name: "Reveal Response" })).toBeVisible();
-  await page.getByRole("button", { name: "Reveal Response" }).click();
+  await expect(page.getByRole("button", { name: "Reveal Final Response" })).toBeVisible();
+  await page.getByRole("button", { name: "Reveal Final Response" }).click();
   await expect(page.getByRole("button", { name: "Full +100" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Half +50" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Miss -100" })).toBeVisible();
   await page.getByRole("button", { name: "Half +50" }).click();
+  await expect(page.getByRole("heading", { name: /Winner/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Show Results" })).toBeVisible();
+  await page.getByRole("button", { name: "Show Results" }).click();
   await expect(page.getByRole("heading", { name: /Winner/ })).toBeVisible();
   await expect(page.getByRole("dialog", { name: /Winner/ }).getByText("$150")).toBeVisible();
 });
@@ -195,8 +218,10 @@ test("legacy final scoring restore sanitizes stale team indexes", async ({ page 
   }, GAME_STATE_STORAGE_KEY);
   await page.reload();
   await page.getByRole("button", { name: "Resume Game" }).click();
-  await expect(page.getByRole("heading", { name: /Winner/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Winner/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Show Results" })).toBeVisible();
+  await page.getByRole("button", { name: "Show Results" }).click();
+  await expect(page.getByRole("heading", { name: /Winner/ })).toBeVisible();
 });
 
 test("generator event config renders scannable QR canvas source", async ({ page }) => {
