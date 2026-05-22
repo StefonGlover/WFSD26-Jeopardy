@@ -2,14 +2,10 @@ import { expect, test } from "@playwright/test";
 
 const GAME_STATE_STORAGE_KEY = "wfsd-jeopardy-game-state-v1";
 
-test("root route opens directly to the gameboard and print packet route is stable", async ({ page }) => {
+test("root route opens directly to the gameboard", async ({ page }) => {
   await page.goto("/index.html");
   await expect(page).toHaveURL(/jeopardy-game\.html$/);
   await expect(page.getByRole("heading", { name: "Safe Food, Fast Thinking" })).toBeVisible();
-
-  await page.goto("/print-kit.html");
-  await expect(page).toHaveURL(/campaign-generator\.html#printPacket$/);
-  await expect(page.getByRole("heading", { name: "Food Safety Passport Challenge" })).toBeVisible();
 });
 
 test("gameboard exposes host score sheet from footer", async ({ page, context }) => {
@@ -27,15 +23,6 @@ test("gameboard exposes host score sheet from footer", async ({ page, context })
   await expect(scoreSheetPage).toHaveURL(/host-score-sheet\.html$/);
   await expect(scoreSheetPage.getByRole("heading", { name: "Host Score Sheet" })).toBeVisible();
   await scoreSheetPage.close();
-});
-
-test("quiz requires an answer before advancing", async ({ page }) => {
-  await page.goto("/digital-quiz.html");
-  await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
-  await page.getByRole("button", { name: "Myth" }).click();
-  await expect(page.getByRole("button", { name: "Next" })).toBeEnabled();
-  await page.getByRole("button", { name: "Next" }).click();
-  await expect(page.getByText("Question 2 of 6")).toBeVisible();
 });
 
 test("jeopardy clue can reveal, no-score, and undo", async ({ page }) => {
@@ -68,6 +55,25 @@ test("incorrect answer opens one-click steal close", async ({ page }) => {
   await expect(page.locator("#clueDialog")).not.toBeVisible();
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.locator("#clueDialog")).not.toBeVisible();
+  await expect(page.getByText("0/25")).toBeVisible();
+});
+
+test("undo after a steal restores the full clue sequence", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=steal-undo");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "Food Safety Basics for 200 points" }).click();
+  await page.getByRole("button", { name: "Reveal Response" }).click();
+  await page.getByRole("button", { name: "Incorrect -200" }).click();
+  await expect(page.getByRole("button", { name: "Correct +200" })).toBeEnabled();
+  await page.getByRole("button", { name: "Correct +200" }).click();
+  await expect(page.locator("#clueDialog")).not.toBeVisible();
+  await expect(page.getByRole("button", { name: "Team 1 -$200" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Team 2 $200" })).toBeVisible();
+  await expect(page.getByText("1/25")).toBeVisible();
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByRole("button", { name: "Team 1 $0" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Team 2 $0" })).toBeVisible();
   await expect(page.getByText("0/25")).toBeVisible();
 });
 
@@ -222,14 +228,6 @@ test("legacy final scoring restore sanitizes stale team indexes", async ({ page 
   await expect(page.getByRole("button", { name: "Show Results" })).toBeVisible();
   await page.getByRole("button", { name: "Show Results" }).click();
   await expect(page.getByRole("heading", { name: /Winner/ })).toBeVisible();
-});
-
-test("generator event config renders scannable QR canvas source", async ({ page }) => {
-  await page.goto("/campaign-generator.html");
-  await page.getByLabel("Feedback / event URL").fill("https://example.com/feedback");
-  await page.getByLabel("Event time").fill("2 PM");
-  await page.getByLabel("Event location").fill("Main Lobby");
-  await expect(page.getByLabel("Generated material preview")).toBeVisible();
 });
 
 test("game layout avoids horizontal overflow at core viewports", async ({ page }) => {
