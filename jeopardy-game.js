@@ -498,6 +498,12 @@ function captureUndo(label, { includeTransient = true } = {}) {
   updateUndoButton();
 }
 
+function relabelUndo(label) {
+  if (!state.undoSnapshot) return;
+  state.undoSnapshot.label = label;
+  updateUndoButton();
+}
+
 function undoLastAction() {
   if (!state.undoSnapshot) return;
   const { label, snapshot } = state.undoSnapshot;
@@ -548,14 +554,9 @@ function getVisual(category, clue) {
   };
 }
 
-function webpPath(path) {
-  return String(path || "").replace(/\.png$/i, ".webp");
-}
-
 function cssImageValue(path) {
   const source = path || "assets/generated/station-myth-fact.png";
-  if (!/\.png$/i.test(source)) return `url("${source}")`;
-  return `image-set(url("${webpPath(source)}") type("image/webp"), url("${source}") type("image/png"))`;
+  return `url("${source}")`;
 }
 
 function getClueHostStage() {
@@ -989,7 +990,11 @@ function applyScore(multiplier) {
   const team = state.teams[teamIndex];
   const value = currentClueScoreValue();
   const delta = value * multiplier;
-  captureUndo(`${team.name} ${formatDelta(delta)}`, { includeTransient: false });
+  if (!state.currentClue.scoredTeams.size || !state.undoSnapshot) {
+    captureUndo(`${team.name} ${formatDelta(delta)}`, { includeTransient: false });
+  } else if (wasStealAttempt) {
+    relabelUndo(`${state.currentClue.category.name} ${state.currentClue.clue.value} scoring`);
+  }
   team.score += value * multiplier;
   state.currentClue.scoredTeams.add(teamIndex);
   markCurrentUsed();
