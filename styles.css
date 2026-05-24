@@ -152,6 +152,20 @@ p {
   font-size: 28px;
 }
 
+.score-board-table td span {
+  display: block;
+  margin-top: 4px;
+  color: var(--coke-red);
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.score-board-table td.used-clue {
+  background: #fff0f0;
+  color: #8a0000;
+}
+
 @media (max-width: 760px) {
   .score-sheet-page {
     padding: 12px;

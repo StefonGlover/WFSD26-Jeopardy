@@ -8,6 +8,8 @@ let setupDraftTeams = null;
 let pendingSavedState = null;
 let confirmResolver = null;
 const mobileBoardQuery = window.matchMedia?.("(max-width: 980px)");
+let clueHostDetailsOpen = getDefaultHostDetailsOpen();
+let finalHostDetailsOpen = getDefaultHostDetailsOpen();
 
 const state = {
   teams: [
@@ -27,6 +29,7 @@ const state = {
   finalWagersLocked: false,
   finalResponseRevealed: false,
   finalScoredTeams: new Set(),
+  finalResults: [],
   finalComplete: false,
   mobileCategoryIndex: 0
 };
@@ -56,6 +59,8 @@ const categoryPrompt = document.getElementById("categoryPrompt");
 const clueText = document.getElementById("clueText");
 const responseBlock = document.getElementById("responseBlock");
 const responseText = document.getElementById("responseText");
+const hostDetailsToggle = document.getElementById("hostDetailsToggle");
+const clueHostDetails = document.getElementById("clueHostDetails");
 const acceptanceStrip = document.getElementById("acceptanceStrip");
 const whyText = document.getElementById("whyText");
 const teachingTag = document.getElementById("teachingTag");
@@ -76,6 +81,8 @@ const finalCategory = document.getElementById("finalCategory");
 const finalClue = document.getElementById("finalClue");
 const finalResponseBlock = document.getElementById("finalResponseBlock");
 const finalResponse = document.getElementById("finalResponse");
+const finalHostDetailsToggle = document.getElementById("finalHostDetailsToggle");
+const finalHostDetails = document.getElementById("finalHostDetails");
 const finalAcceptanceStrip = document.getElementById("finalAcceptanceStrip");
 const finalRubric = document.getElementById("finalRubric");
 const finalRubricList = document.getElementById("finalRubricList");
@@ -124,11 +131,26 @@ function clearElement(element) {
   }
 }
 
+function getDefaultHostDetailsOpen() {
+  return !mobileBoardQuery?.matches;
+}
+
 function textElement(tagName, text, className) {
   const element = document.createElement(tagName);
   if (className) element.className = className;
   element.textContent = text ?? "";
   return element;
+}
+
+function sanitizeFinalResult(result) {
+  const validResults = new Set(["correct", "partial", "incorrect", "none"]);
+  const safeResult = validResults.has(result?.result) ? result.result : "none";
+  const label = typeof result?.label === "string" ? result.label : "";
+  return {
+    result: safeResult,
+    label: label || (safeResult === "none" ? "" : "Scored"),
+    delta: Number(result?.delta) || 0
+  };
 }
 
 function clueId(categoryIndex, clueIndex) {
@@ -181,6 +203,7 @@ function serializeState({ includeTransient = false, includeUndo = true } = {}) {
     finalWagersLocked: state.finalWagersLocked,
     finalResponseRevealed: state.finalResponseRevealed,
     finalScoredTeams: [...state.finalScoredTeams],
+    finalResults: Array.from({ length: totalTeams }, (_, index) => sanitizeFinalResult(state.finalResults[index])),
     finalComplete: state.finalComplete,
     mobileCategoryIndex: state.mobileCategoryIndex,
     currentClue: includeTransient ? serializeCurrentClue() : null,
@@ -234,6 +257,7 @@ function restoreState(snapshot, { reopenDialogs = false } = {}) {
   state.finalScoredTeams = new Set((snapshot.finalScoredTeams || [])
     .map((index) => Number(index))
     .filter((index) => Number.isInteger(index) && index >= 0 && index < state.teams.length));
+  state.finalResults = Array.from({ length: state.teams.length }, (_, index) => sanitizeFinalResult(snapshot.finalResults?.[index]));
   syncFinalZeroWagers();
   state.finalComplete = Boolean(snapshot.finalComplete);
   state.mobileCategoryIndex = Math.min(
@@ -406,7 +430,7 @@ function restoreOpenDialog(dialogName) {
     return;
   }
   if (dialogName === "final") {
-    openFinal();
+    openFinal({ skipEarlyConfirm: true });
     return;
   }
   if (dialogName === "end" && state.finalComplete) {
@@ -428,6 +452,7 @@ function renderState() {
     renderWagers();
     renderFinalStage();
     updateFinalControls();
+    updateFinalHostDetailsDisclosure();
   }
   if (isDialogOpen(clueDialog) && state.currentClue) {
     renderCurrentClueView();
@@ -456,6 +481,32 @@ function renderGlossary(strip, item) {
     article.title = chip.title;
     article.append(textElement("span", chip.label), textElement("p", chip.text));
     strip.appendChild(article);
+  });
+}
+
+function updateHostDetailsDisclosure({ button, panel, open, revealed }) {
+  if (!button || !panel) return;
+  button.hidden = !revealed;
+  panel.hidden = !revealed || !open;
+  button.setAttribute("aria-expanded", revealed && open ? "true" : "false");
+  button.textContent = open ? "Hide Host Details" : "Host Details";
+}
+
+function updateClueHostDetailsDisclosure() {
+  updateHostDetailsDisclosure({
+    button: hostDetailsToggle,
+    panel: clueHostDetails,
+    open: clueHostDetailsOpen,
+    revealed: Boolean(state.currentClue?.revealed)
+  });
+}
+
+function updateFinalHostDetailsDisclosure() {
+  updateHostDetailsDisclosure({
+    button: finalHostDetailsToggle,
+    panel: finalHostDetails,
+    open: finalHostDetailsOpen,
+    revealed: Boolean(state.finalResponseRevealed)
   });
 }
 
@@ -822,6 +873,14 @@ function updateBoardModeAccessibility() {
   setRegionInactive(gameBoard, mobileMode);
   setRegionInactive(mobileCategoryNav, !mobileMode);
   setRegionInactive(mobileBoard, !mobileMode);
+  if (isDialogOpen(clueDialog) && state.currentClue?.revealed) {
+    clueHostDetailsOpen = getDefaultHostDetailsOpen();
+    updateClueHostDetailsDisclosure();
+  }
+  if (isDialogOpen(finalDialog) && state.finalResponseRevealed) {
+    finalHostDetailsOpen = getDefaultHostDetailsOpen();
+    updateFinalHostDetailsDisclosure();
+  }
 }
 
 function renderSetupFields(teams = state.teams) {
@@ -865,6 +924,7 @@ function saveTeams() {
   state.activeTeam = Math.min(state.activeTeam, state.teams.length - 1);
   state.finalWagers = state.finalWagers.slice(0, state.teams.length);
   state.finalScoredTeams = new Set([...state.finalScoredTeams].filter((index) => index < state.teams.length));
+  state.finalResults = state.finalResults.slice(0, state.teams.length);
   if (state.finalComplete && !finalReadyForResults()) {
     state.finalComplete = false;
   }
@@ -899,6 +959,7 @@ function renderCurrentClueView() {
   riskConcern.textContent = clue.riskCard.risk;
   riskAction.textContent = clue.riskCard.action;
   responseBlock.hidden = !state.currentClue.revealed;
+  updateClueHostDetailsDisclosure();
   revealButton.disabled = state.currentClue.revealed;
   updateClueStageUI();
   renderTeamSelect();
@@ -922,6 +983,7 @@ function openClue(categoryIndex, itemIndex) {
     resolved: false,
     revealed: false
   };
+  clueHostDetailsOpen = getDefaultHostDetailsOpen();
 
   const showCategoryPrompt = !state.seenCategoryPrompts.has(category.id);
   state.seenCategoryPrompts.add(category.id);
@@ -940,7 +1002,9 @@ function revealClue() {
   playSound("reveal");
   responseBlock.hidden = false;
   state.currentClue.revealed = true;
+  clueHostDetailsOpen = getDefaultHostDetailsOpen();
   revealButton.disabled = true;
+  updateClueHostDetailsDisclosure();
   updateScoreButtons();
   updateHostNoteForCurrentClue();
   saveState();
@@ -1135,6 +1199,7 @@ function resetGameState({ keepTeamNames = true } = {}) {
   state.finalWagersLocked = false;
   state.finalResponseRevealed = false;
   state.finalScoredTeams.clear();
+  state.finalResults = [];
   state.finalComplete = false;
   state.mobileCategoryIndex = 0;
   updateFinalButton();
@@ -1179,10 +1244,27 @@ function showResultsDialog(returnFocus) {
   playSound("winner");
 }
 
-function openFinal() {
+function shouldConfirmEarlyFinal() {
+  return !state.finalWagersLocked &&
+    !state.finalResponseRevealed &&
+    !state.finalComplete &&
+    state.usedClues.size < getTotalClues();
+}
+
+async function openFinal({ skipEarlyConfirm = false } = {}) {
   if (state.finalComplete) {
     showResultsDialog(finalButton);
     return;
+  }
+  if (!skipEarlyConfirm && shouldConfirmEarlyFinal()) {
+    const totalClues = getTotalClues();
+    const confirmed = await confirmAction({
+      kicker: "Final Jeopardy",
+      title: "Start Final Jeopardy?",
+      message: `Only ${state.usedClues.size}/${totalClues} clues have been played. Start Final Jeopardy now?`,
+      confirmLabel: "Start Final"
+    });
+    if (!confirmed) return;
   }
   finalCategory.textContent = gameData.finalJeopardy.category;
   const finalVisual = gameData.finalJeopardy.visual || {};
@@ -1201,6 +1283,10 @@ function openFinal() {
   finalRiskConcern.textContent = gameData.finalJeopardy.riskCard.risk;
   finalRiskAction.textContent = gameData.finalJeopardy.riskCard.action;
   finalResponseBlock.hidden = !state.finalResponseRevealed;
+  if (!state.finalResponseRevealed) {
+    finalHostDetailsOpen = getDefaultHostDetailsOpen();
+  }
+  updateFinalHostDetailsDisclosure();
   renderFinalPrompt();
   renderWagers();
   renderFinalStage();
@@ -1367,10 +1453,12 @@ function revealFinal() {
   playSound("reveal");
   finalResponseBlock.hidden = false;
   state.finalResponseRevealed = true;
+  finalHostDetailsOpen = getDefaultHostDetailsOpen();
   syncFinalZeroWagers();
   renderFinalPrompt();
   renderFinalRubric();
   renderWagers();
+  updateFinalHostDetailsDisclosure();
   updateFinalControls();
   renderFinalStage();
   saveState();
@@ -1402,6 +1490,11 @@ function syncFinalZeroWagers() {
     const wager = Math.max(0, Number(state.finalWagers[index]) || 0);
     if (wager === 0) {
       state.finalScoredTeams.add(index);
+      state.finalResults[index] = sanitizeFinalResult({
+        result: "none",
+        label: "Auto-reviewed",
+        delta: 0
+      });
     }
   });
 }
@@ -1440,6 +1533,11 @@ function applyFinalScore(button) {
   playSound(scoring.sound);
   state.teams[teamIndex].score += delta;
   state.finalScoredTeams.add(teamIndex);
+  state.finalResults[teamIndex] = sanitizeFinalResult({
+    result,
+    label: scoring.label,
+    delta
+  });
   const card = button.closest(".wager-card");
   card.classList.add("scored");
   card.querySelector("input").disabled = true;
@@ -1718,7 +1816,7 @@ function bindEvents() {
   undoButton.addEventListener("click", undoLastAction);
   document.getElementById("resetButton").addEventListener("click", resetGame);
   document.getElementById("nextTeamButton").addEventListener("click", nextTeam);
-  finalButton.addEventListener("click", openFinal);
+  finalButton.addEventListener("click", () => openFinal());
   closeClueButton.addEventListener("click", closeClueFromHost);
   clueDialog.addEventListener("cancel", (event) => {
     if (state.currentClue?.stealOpen && !state.currentClue.resolved) {
@@ -1776,10 +1874,18 @@ function bindEvents() {
     saveState();
   });
   revealButton.addEventListener("click", revealClue);
+  hostDetailsToggle.addEventListener("click", () => {
+    clueHostDetailsOpen = !clueHostDetailsOpen;
+    updateClueHostDetailsDisclosure();
+  });
   correctButton.addEventListener("click", () => applyScore(1));
   incorrectButton.addEventListener("click", () => applyScore(-1));
   noScoreButton.addEventListener("click", noScore);
   finalPrimaryButton.addEventListener("click", advanceFinalStage);
+  finalHostDetailsToggle.addEventListener("click", () => {
+    finalHostDetailsOpen = !finalHostDetailsOpen;
+    updateFinalHostDetailsDisclosure();
+  });
   wagerGrid.addEventListener("input", (event) => {
     if (state.finalWagersLocked) return;
     const input = event.target.closest("input[data-wager-index]");

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Safe Food, Fast Thinking</title>
     <link rel="icon" href="assets/generated/coca-cola-logo.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="jeopardy-game.css?v=9cc6e066dc">
+    <link rel="stylesheet" href="jeopardy-game.css?v=90bbcbe6cf">
   </head>
   <body>
     <main class="game-shell">
@@ -90,29 +90,34 @@
           <p class="category-prompt" id="categoryPrompt" hidden></p>
           <h2 id="clueText"></h2>
           <div class="response-block" id="responseBlock" hidden>
-            <p class="clue-label">Correct Response</p>
-            <h3 id="responseText"></h3>
-            <div class="acceptance-strip" id="acceptanceStrip" hidden></div>
-            <p class="why-title">Why It Matters</p>
-            <p id="whyText"></p>
-            <div class="glossary-strip" id="glossaryStrip" aria-label="World Food Safety Day theme glossary"></div>
-            <div class="bridge-strip">
-              <span>Burden to Solution</span>
-              <p id="bridgeText"></p>
+            <div class="audience-response">
+              <p class="clue-label">Correct Response</p>
+              <h3 id="responseText"></h3>
             </div>
-            <div class="risk-card" aria-label="Risk to solution card">
-              <article>
-                <span>Signal</span>
-                <p id="riskSignal"></p>
-              </article>
-              <article>
-                <span>Risk</span>
-                <p id="riskConcern"></p>
-              </article>
-              <article>
-                <span>Action</span>
-                <p id="riskAction"></p>
-              </article>
+            <button class="text-button host-details-toggle" type="button" id="hostDetailsToggle" aria-controls="clueHostDetails" aria-expanded="true">Host Details</button>
+            <div class="host-details" id="clueHostDetails">
+              <div class="acceptance-strip" id="acceptanceStrip" hidden></div>
+              <p class="why-title">Why It Matters</p>
+              <p id="whyText"></p>
+              <div class="glossary-strip" id="glossaryStrip" aria-label="World Food Safety Day theme glossary"></div>
+              <div class="bridge-strip">
+                <span>Burden to Solution</span>
+                <p id="bridgeText"></p>
+              </div>
+              <div class="risk-card" aria-label="Risk to solution card">
+                <article>
+                  <span>Signal</span>
+                  <p id="riskSignal"></p>
+                </article>
+                <article>
+                  <span>Risk</span>
+                  <p id="riskConcern"></p>
+                </article>
+                <article>
+                  <span>Action</span>
+                  <p id="riskAction"></p>
+                </article>
+              </div>
             </div>
           </div>
         </div>
@@ -146,33 +151,38 @@
           <h2 id="finalClue"></h2>
           <div class="wager-grid" id="wagerGrid"></div>
           <div class="response-block" id="finalResponseBlock" hidden>
-            <p class="clue-label">Strong Response Includes</p>
-            <h3 id="finalResponse"></h3>
-            <div class="acceptance-strip" id="finalAcceptanceStrip" hidden></div>
-            <div class="final-rubric" id="finalRubric" hidden>
-              <p class="clue-label">Scoring Rubric</p>
-              <div id="finalRubricList"></div>
+            <div class="audience-response">
+              <p class="clue-label">Strong Response Includes</p>
+              <h3 id="finalResponse"></h3>
             </div>
-            <p class="why-title">Why It Matters</p>
-            <p id="finalWhy"></p>
-            <div class="glossary-strip" id="finalGlossaryStrip" aria-label="Final World Food Safety Day theme glossary"></div>
-            <div class="bridge-strip">
-              <span>Burden to Solution</span>
-              <p id="finalBridge"></p>
-            </div>
-            <div class="risk-card" aria-label="Final risk to solution card">
-              <article>
-                <span>Signal</span>
-                <p id="finalRiskSignal"></p>
-              </article>
-              <article>
-                <span>Risk</span>
-                <p id="finalRiskConcern"></p>
-              </article>
-              <article>
-                <span>Action</span>
-                <p id="finalRiskAction"></p>
-              </article>
+            <button class="text-button host-details-toggle" type="button" id="finalHostDetailsToggle" aria-controls="finalHostDetails" aria-expanded="true">Host Details</button>
+            <div class="host-details" id="finalHostDetails">
+              <div class="acceptance-strip" id="finalAcceptanceStrip" hidden></div>
+              <div class="final-rubric" id="finalRubric" hidden>
+                <p class="clue-label">Scoring Rubric</p>
+                <div id="finalRubricList"></div>
+              </div>
+              <p class="why-title">Why It Matters</p>
+              <p id="finalWhy"></p>
+              <div class="glossary-strip" id="finalGlossaryStrip" aria-label="Final World Food Safety Day theme glossary"></div>
+              <div class="bridge-strip">
+                <span>Burden to Solution</span>
+                <p id="finalBridge"></p>
+              </div>
+              <div class="risk-card" aria-label="Final risk to solution card">
+                <article>
+                  <span>Signal</span>
+                  <p id="finalRiskSignal"></p>
+                </article>
+                <article>
+                  <span>Risk</span>
+                  <p id="finalRiskConcern"></p>
+                </article>
+                <article>
+                  <span>Action</span>
+                  <p id="finalRiskAction"></p>
+                </article>
+              </div>
             </div>
           </div>
         </div>
@@ -268,6 +278,6 @@
     <script src="jeopardy-data.js?v=b244a25d60"></script>
     <script src="jeopardy-sound.js?v=bf4ef04a83"></script>
     <script src="jeopardy-dialogs.js?v=20d83550f6"></script>
-    <script src="jeopardy-game.js?v=7b602fea22"></script>
+    <script src="jeopardy-game.js?v=c3aa22c3c8"></script>
   </body>
 </html>

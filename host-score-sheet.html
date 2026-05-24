@@ -59,6 +59,32 @@
         { name: "Team 2", score: 0 },
         { name: "Team 3", score: 0 }
       ];
+      const usedClues = new Set(saved?.usedClues || []);
+      const finalWagers = Array.isArray(saved?.finalWagers) ? saved.finalWagers : [];
+      const finalResults = Array.isArray(saved?.finalResults) ? saved.finalResults : [];
+
+      function clueId(categoryIndex, clueIndex) {
+        return `${categoryIndex}-${clueIndex}`;
+      }
+
+      function formatScore(score) {
+        const value = Number(score) || 0;
+        return value < 0 ? `-$${Math.abs(value)}` : `$${value}`;
+      }
+
+      function formatDelta(delta) {
+        const value = Number(delta) || 0;
+        return value > 0 ? `+${value}` : `${value}`;
+      }
+
+      function formatFinalResult(result, teamIndex) {
+        if (result?.label) {
+          const delta = Number(result.delta) || 0;
+          return delta ? `${result.label} ${formatDelta(delta)}` : result.label;
+        }
+        if (saved?.finalScoredTeams?.includes(teamIndex)) return "Reviewed";
+        return "";
+      }
 
       const teamGrid = document.getElementById("scoreTeamGrid");
       teams.forEach((team) => {
@@ -66,7 +92,7 @@
         const name = document.createElement("strong");
         name.textContent = team.name;
         const score = document.createElement("p");
-        score.textContent = "Score:";
+        score.textContent = `Score: ${formatScore(team.score)}`;
         card.append(name, score);
         teamGrid.appendChild(card);
       });
@@ -85,9 +111,17 @@
       const tbody = document.createElement("tbody");
       for (let row = 0; row < 5; row += 1) {
         const tr = document.createElement("tr");
-        data.categories.forEach((category) => {
+        data.categories.forEach((category, categoryIndex) => {
           const td = document.createElement("td");
+          const id = clueId(categoryIndex, row);
+          const isUsed = usedClues.has(id);
           td.textContent = category.clues[row]?.value || "";
+          td.className = isUsed ? "used-clue" : "";
+          if (isUsed) {
+            const status = document.createElement("span");
+            status.textContent = "Used";
+            td.appendChild(status);
+          }
           tr.appendChild(td);
         });
         tbody.appendChild(tr);
@@ -95,13 +129,13 @@
       table.appendChild(tbody);
 
       const finalGrid = document.getElementById("finalScoreGrid");
-      teams.forEach((team) => {
+      teams.forEach((team, index) => {
         const card = document.createElement("article");
         const name = document.createElement("strong");
         name.textContent = team.name;
         card.append(name, document.createElement("p"), document.createElement("p"));
-        card.children[1].textContent = "Wager:";
-        card.children[2].textContent = "Result:";
+        card.children[1].textContent = `Wager: ${formatScore(finalWagers[index])}`;
+        card.children[2].textContent = `Result: ${formatFinalResult(finalResults[index], index)}`;
         finalGrid.appendChild(card);
       });
 
