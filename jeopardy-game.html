@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Safe Food, Fast Thinking</title>
     <link rel="icon" href="assets/generated/coca-cola-logo.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="jeopardy-game.css?v=24c78eecc4">
+    <link rel="stylesheet" href="jeopardy-game.css?v=9514f8c5b9">
   </head>
   <body>
     <main class="game-shell">
@@ -22,7 +22,7 @@
           <button class="icon-button" type="button" id="rulesButton" title="Show rules" aria-label="Show rules">?</button>
           <button class="text-button sound-toggle muted" type="button" id="soundButton" title="Turn sound on" aria-label="Sound is off. Turn sound on." aria-pressed="false">Sound Off</button>
           <button class="text-button" type="button" id="setupButton">Teams</button>
-          <button class="text-button danger" type="button" id="resetButton">Reset</button>
+          <button class="text-button reset-button" type="button" id="resetButton">Reset</button>
         </div>
       </header>
 
@@ -37,14 +37,13 @@
       <footer class="game-footer">
         <div class="footer-support">
           <div class="footer-status" aria-live="polite">
-            <p class="progress-status" id="progressStatus">0/25</p>
+            <p class="progress-status" id="progressStatus">0/25 clues</p>
           </div>
-          <button class="text-button notes-button" type="button" id="hostNotesButton">Notes</button>
-          <a class="text-button score-sheet-button" href="host-score-sheet.html" target="_blank" rel="noopener">Host Score Sheet</a>
+          <button class="text-button notes-button" type="button" id="hostNotesButton">Host Notes</button>
+          <a class="text-button score-sheet-button" href="host-score-sheet.html" target="_blank" rel="noopener">Score Sheet</a>
           <button class="text-button undo-button" type="button" id="undoButton" disabled>Undo</button>
         </div>
         <div class="footer-flow">
-          <button class="text-button next-team-button" type="button" id="nextTeamButton">Next Team →</button>
           <button class="final-button" type="button" id="finalButton">Final Jeopardy</button>
         </div>
       </footer>
@@ -177,10 +176,11 @@
               </div>
             </div>
           </div>
+          <p class="final-wager-helper" id="finalWagerHelper">Revealing locks wagers.</p>
           <div class="wager-grid" id="wagerGrid"></div>
         </div>
         <div class="host-controls final-controls">
-          <button class="primary-button" type="button" id="finalPrimaryButton">Lock Wagers &amp; Reveal Clue</button>
+          <button class="primary-button" type="button" id="finalPrimaryButton">Reveal Final Clue</button>
           <button class="text-button" type="button" id="finalUndoButton" disabled>Undo Final Step</button>
         </div>
       </section>
@@ -271,6 +271,6 @@
     <script src="jeopardy-data.js?v=b244a25d60"></script>
     <script src="jeopardy-sound.js?v=bf4ef04a83"></script>
     <script src="jeopardy-dialogs.js?v=20d83550f6"></script>
-    <script src="jeopardy-game.js?v=02728c70e3"></script>
+    <script src="jeopardy-game.js?v=e6da1cb4d5"></script>
   </body>
 </html>
