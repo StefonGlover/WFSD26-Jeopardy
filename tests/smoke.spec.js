@@ -1,6 +1,33 @@
 import { expect, test } from "@playwright/test";
 
 const GAME_STATE_STORAGE_KEY = "wfsd-jeopardy-game-state-v1";
+const TARGET_VIEWPORTS = [
+  { width: 390, height: 844 },
+  { width: 430, height: 932 },
+  { width: 768, height: 1024 },
+  { width: 1075, height: 908 },
+  { width: 1280, height: 720 },
+  { width: 1366, height: 768 },
+  { width: 1440, height: 900 },
+  { width: 1920, height: 1080 }
+];
+
+async function expectNoPageOverflow(page) {
+  const overflow = await page.evaluate(() => ({
+    x: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    y: document.documentElement.scrollHeight - Math.max(document.documentElement.clientHeight, window.innerHeight)
+  }));
+  expect(overflow.x).toBeLessThanOrEqual(1);
+}
+
+async function expectVisibleInViewport(page, locator) {
+  await expect(locator).toBeVisible();
+  const box = await locator.boundingBox();
+  expect(box).not.toBeNull();
+  const viewport = page.viewportSize();
+  expect(box.y).toBeGreaterThanOrEqual(-1);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
+}
 
 test("root route opens directly to the gameboard", async ({ page }) => {
   await page.goto("/index.html");
@@ -116,19 +143,21 @@ test("no-score auto-close resumes without reopening clue dialog", async ({ page 
   await expect(page.locator("#progressStatus")).toHaveText("1/25");
 });
 
-test("final zero wagers auto-review and require explicit results", async ({ page }) => {
+test("final zero wagers auto-review and show results without extra click", async ({ page }) => {
   await page.goto("/jeopardy-game.html?test=final-zero");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await page.getByRole("button", { name: "Final Jeopardy" }).click();
-  await page.getByRole("button", { name: "Start Final" }).click();
+  await expect(page.getByRole("heading", { name: "Start Final Jeopardy?" })).toHaveCount(0);
   await page.getByRole("button", { name: "Lock Wagers & Reveal Clue" }).click();
   await page.getByRole("button", { name: "Reveal Final Response" }).click();
-  await expect(page.getByText("Auto-reviewed")).toHaveCount(3);
-  await expect(page.getByRole("heading", { name: /Winner/ })).toHaveCount(0);
-  await page.getByRole("button", { name: "Show Results" }).click();
   await expect(page.getByRole("heading", { name: /Winner/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Mark Reviewed" })).toHaveCount(0);
+  await expect(page.locator("#finalDialog").getByRole("button", { name: "Show Results" })).toHaveCount(0);
+  const savedState = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey)), GAME_STATE_STORAGE_KEY);
+  expect(savedState.finalComplete).toBe(true);
+  expect(savedState.finalScoredTeams).toEqual([0, 1, 2]);
+  expect(savedState.finalResults.map((result) => result.label)).toEqual(["Auto-reviewed", "Auto-reviewed", "Auto-reviewed"]);
 });
 
 test("final guided scoring supports half credit and hides early results", async ({ page }) => {
@@ -140,20 +169,51 @@ test("final guided scoring supports half credit and hides early results", async 
   await page.getByRole("button", { name: "Reveal Response" }).click();
   await page.getByRole("button", { name: "Correct +100" }).click();
   await page.getByRole("button", { name: "Final Jeopardy" }).click();
-  await page.getByRole("button", { name: "Start Final" }).click();
   await page.getByLabel("Team 1 wager").fill("100");
   await page.getByRole("button", { name: "Lock Wagers & Reveal Clue" }).click();
   await expect(page.getByRole("button", { name: "Reveal Final Response" })).toBeVisible();
   await page.getByRole("button", { name: "Reveal Final Response" }).click();
+  await expect(page.getByRole("button", { name: "Host Details" })).toBeVisible();
+  await expect(page.locator("#finalRubric")).toBeVisible();
+  await expect(page.getByText("Five or more relevant functions")).toBeVisible();
+  await expect(page.locator("#finalHostDetails")).not.toBeVisible();
   await expect(page.getByRole("button", { name: "Full +100" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Half +50" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Miss -100" })).toBeVisible();
+  await page.getByRole("button", { name: "Host Details" }).click();
+  await expect(page.locator("#finalHostDetails")).toBeVisible();
+  await page.getByRole("button", { name: "Hide Host Details" }).click();
   await page.getByRole("button", { name: "Half +50" }).click();
-  await expect(page.getByRole("heading", { name: /Winner/ })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Show Results" })).toBeVisible();
-  await page.getByRole("button", { name: "Show Results" }).click();
   await expect(page.getByRole("heading", { name: /Winner/ })).toBeVisible();
   await expect(page.getByRole("dialog", { name: /Winner/ }).getByText("$150")).toBeVisible();
+});
+
+test("final score controls stay visible across compact viewports", async ({ page }) => {
+  const finalViewports = [
+    { width: 390, height: 844 },
+    { width: 430, height: 932 },
+    { width: 1280, height: 720 },
+    { width: 1366, height: 768 }
+  ];
+
+  for (const viewport of finalViewports) {
+    await page.setViewportSize(viewport);
+    await page.goto(`/jeopardy-game.html?test=final-controls-${viewport.width}`);
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    await page.getByRole("button", { name: "Food Safety Basics for 100 points" }).click();
+    await page.getByRole("button", { name: "Reveal Response" }).click();
+    await page.getByRole("button", { name: "Correct +100" }).click();
+    await page.getByRole("button", { name: "Final Jeopardy" }).click();
+    await page.getByLabel("Team 1 wager").fill("100");
+    await page.getByRole("button", { name: "Lock Wagers & Reveal Clue" }).click();
+    await page.getByRole("button", { name: "Reveal Final Response" }).click();
+    await expect(page.locator("#finalHostDetails")).not.toBeVisible();
+    await expectVisibleInViewport(page, page.locator("#finalDialog .final-controls"));
+    await expectVisibleInViewport(page, page.getByRole("button", { name: "Half +50" }));
+    await expectNoPageOverflow(page);
+    await page.getByRole("button", { name: "Back to board" }).click();
+  }
 });
 
 test("revealed clue uses collapsible host details without layout overflow", async ({ page }) => {
@@ -192,7 +252,7 @@ test("mobile revealed clue starts with host details collapsed", async ({ page })
   await expect(page.locator("#clueHostDetails")).toBeVisible();
 });
 
-test("early Final Jeopardy requires confirmation but complete board opens directly", async ({ page }) => {
+test("early Final Jeopardy opens directly without a confirmation detour", async ({ page }) => {
   await page.goto("/jeopardy-game.html?test=early-final-guard");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
@@ -200,13 +260,9 @@ test("early Final Jeopardy requires confirmation but complete board opens direct
   await page.getByRole("button", { name: "Reveal Response" }).click();
   await page.getByRole("button", { name: "Correct +100" }).click();
   await page.getByRole("button", { name: "Final Jeopardy" }).click();
-  await expect(page.getByRole("heading", { name: "Start Final Jeopardy?" })).toBeVisible();
-  await expect(page.getByText("Only 1/25 clues have been played. Start Final Jeopardy now?")).toBeVisible();
-  await page.getByRole("button", { name: "Cancel" }).click();
-  await expect(page.locator("#finalDialog")).not.toBeVisible();
-  await page.getByRole("button", { name: "Final Jeopardy" }).click();
-  await page.getByRole("button", { name: "Start Final" }).click();
+  await expect(page.getByRole("heading", { name: "Start Final Jeopardy?" })).toHaveCount(0);
   await expect(page.getByLabel("Team 1 wager")).toBeVisible();
+  await page.getByRole("button", { name: "Back to board" }).click();
 
   await page.goto("/jeopardy-game.html?test=final-complete-board");
   await page.evaluate((storageKey) => {
@@ -310,28 +366,67 @@ test("legacy final scoring restore sanitizes stale team indexes", async ({ page 
   }, GAME_STATE_STORAGE_KEY);
   await page.reload();
   await page.getByRole("button", { name: "Resume Game" }).click();
-  await expect(page.getByRole("heading", { name: /Winner/ })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Start Final Jeopardy?" })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Show Results" })).toBeVisible();
-  await page.getByRole("button", { name: "Show Results" }).click();
   await expect(page.getByRole("heading", { name: /Winner/ })).toBeVisible();
+  await expect(page.locator("#finalDialog").getByRole("button", { name: "Show Results" })).toHaveCount(0);
 });
 
 test("game layout avoids horizontal overflow at core viewports", async ({ page }) => {
-  const viewports = [
-    { width: 1075, height: 908 },
-    { width: 1366, height: 768 },
-    { width: 390, height: 844 }
-  ];
-
-  for (const viewport of viewports) {
+  for (const viewport of TARGET_VIEWPORTS) {
     await page.setViewportSize(viewport);
     await page.goto("/jeopardy-game.html?test=viewport");
     await page.evaluate(() => localStorage.clear());
     await page.reload();
     await expect(page.getByRole("heading", { name: "Safe Food, Fast Thinking" })).toBeVisible();
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    expect(overflow).toBeLessThanOrEqual(1);
+    await expect(page.getByRole("button", { name: "Final Jeopardy" })).toBeVisible();
+    await expectNoPageOverflow(page);
+  }
+});
+
+test("primary dialogs remain usable across target viewport families", async ({ page }) => {
+  const viewports = [
+    { width: 390, height: 844 },
+    { width: 768, height: 1024 },
+    { width: 1280, height: 720 },
+    { width: 1920, height: 1080 }
+  ];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await page.goto(`/jeopardy-game.html?test=dialogs-${viewport.width}`);
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+
+    await page.getByRole("button", { name: "Teams" }).click();
+    await expect(page.getByRole("heading", { name: "Build Teams" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save Teams" })).toBeVisible();
+    await expectNoPageOverflow(page);
+    await page.getByRole("button", { name: "Close Team Setup" }).click();
+
+    await page.getByRole("button", { name: "Show rules" }).click();
+    await expect(page.getByRole("heading", { name: "Classic Jeopardy Format" })).toBeVisible();
+    await expectNoPageOverflow(page);
+    await page.getByRole("button", { name: "Close rules" }).click();
+
+    await page.getByRole("button", { name: "Notes" }).click();
+    await expect(page.getByRole("heading", { name: "Host Notes" })).toBeVisible();
+    await expect(page.getByText("Recent Plays")).toBeVisible();
+    await expectNoPageOverflow(page);
+    await page.getByRole("button", { name: "Close Host Notes" }).click();
+
+    await page.getByRole("button", { name: "Food Safety Basics for 100 points" }).click();
+    await page.getByRole("button", { name: "Reveal Response" }).click();
+    await expect(page.getByRole("heading", { name: "The consumer." })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Correct +100" })).toBeVisible();
+    await expectNoPageOverflow(page);
+    await page.getByRole("button", { name: "No Score / Close" }).click();
+
+    await page.getByRole("button", { name: "Final Jeopardy" }).click();
+    await expect(page.getByRole("heading", { name: "Start Final Jeopardy?" })).toHaveCount(0);
+    await expect(page.getByLabel("Team 1 wager")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Lock Wagers & Reveal Clue" })).toBeVisible();
+    await expectNoPageOverflow(page);
+    await page.getByRole("button", { name: "Back to board" }).click();
   }
 });
 
@@ -393,4 +488,86 @@ test("host score sheet reflects saved scores, used clues, wagers, and final resu
   await expect(page.getByText("Wager: $50")).toBeVisible();
   await expect(page.getByText("Result: Half +25")).toBeVisible();
   await expect(page.getByText("Result: Auto-reviewed")).toHaveCount(2);
+});
+
+test("malformed saved game state is normalized before restoring", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=malformed-state");
+  await page.evaluate((storageKey) => {
+    localStorage.clear();
+    window.__teamNameInjected = false;
+    localStorage.setItem(storageKey, JSON.stringify({
+      version: 1,
+      teams: [
+        { name: "<img src=x onerror='window.__teamNameInjected=true'>VeryLongTeamNameThatShouldBeTrimmed", score: 100 },
+        { name: "Team 2", score: 50 },
+        { name: "Team 3", score: 0 },
+        { name: "Team 4", score: 0 },
+        { name: "Team 5", score: 0 },
+        { name: "Team 6", score: 0 }
+      ],
+      activeTeam: 99,
+      usedClues: ["0-0", "999-999", "<script>alert(1)</script>"],
+      seenCategoryPrompts: ["food-safety-basics", "bad-category"],
+      actionHistory: [],
+      finalWagers: [999999, 999999, 999999, 999999, 999999, 999999],
+      finalWagersLocked: true,
+      finalResponseRevealed: true,
+      finalScoredTeams: [8, -1],
+      finalResults: [
+        { result: "correct", label: "<script>alert(1)</script>", delta: 999999 },
+        { result: "incorrect", label: "Bad", delta: -999999 }
+      ],
+      finalComplete: false,
+      mobileCategoryIndex: 99,
+      currentClue: {
+        id: "0-0",
+        scoredTeams: [0, 99, "<script>"],
+        noScore: false,
+        stealOpen: false,
+        resolved: false,
+        revealed: true
+      },
+      openDialog: "final"
+    }));
+  }, GAME_STATE_STORAGE_KEY);
+  await page.reload();
+  await page.getByRole("button", { name: "Resume Game" }).click();
+  await expect(page.locator(".team-card")).toHaveCount(5);
+  await expect(page.locator("#progressStatus")).toHaveText("1/25");
+  await expect(page.locator('[data-wager-index="0"]')).toHaveValue("100");
+  await expect(page.getByRole("button", { name: "Full +100" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Miss -50" })).toBeVisible();
+  await expect(page.getByText("999999")).toHaveCount(0);
+  await expect(page.getByText("<script>alert(1)</script>")).toHaveCount(0);
+  expect(await page.evaluate(() => window.__teamNameInjected)).not.toBe(true);
+});
+
+test("host score sheet sanitizes malformed saved state", async ({ page }) => {
+  await page.goto("/host-score-sheet.html?test=malformed-state");
+  await page.evaluate((storageKey) => {
+    localStorage.clear();
+    localStorage.setItem(storageKey, JSON.stringify({
+      version: 1,
+      teams: [
+        { name: "<svg onload='window.__scoreSheetInjected=true'>VeryLongTeamNameThatShouldBeTrimmed", score: 50 },
+        { name: "Supply", score: 25 },
+        { name: "Ops", score: 0 },
+        { name: "QA", score: 0 },
+        { name: "Lab", score: 0 },
+        { name: "Extra", score: 0 }
+      ],
+      usedClues: ["0-0", "9-9", "not-a-clue"],
+      finalWagers: [99999],
+      finalResults: [
+        { result: "correct", label: "<script>alert(1)</script>", delta: 99999 }
+      ],
+      finalScoredTeams: [0, 99]
+    }));
+  }, GAME_STATE_STORAGE_KEY);
+  await page.reload();
+  await expect(page.locator("#scoreTeamGrid article")).toHaveCount(5);
+  await expect(page.locator(".used-clue")).toHaveCount(1);
+  await expect(page.getByText("Wager: $50")).toBeVisible();
+  await expect(page.getByText("Result: Full +50")).toBeVisible();
+  await expect(page.getByText("<script>alert(1)</script>")).toHaveCount(0);
 });

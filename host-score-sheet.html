@@ -45,6 +45,10 @@
     <script src="jeopardy-data.js"></script>
     <script>
       const stateKey = "wfsd-jeopardy-game-state-v1";
+      const minTeamCount = 2;
+      const maxTeamCount = 5;
+      const maxTeamNameLength = 24;
+      const scoreLimit = 999999;
       const data = window.JeopardyData;
       const saved = (() => {
         try {
@@ -54,14 +58,65 @@
           return null;
         }
       })();
-      const teams = saved?.teams?.length ? saved.teams : [
-        { name: "Team 1", score: 0 },
-        { name: "Team 2", score: 0 },
-        { name: "Team 3", score: 0 }
-      ];
-      const usedClues = new Set(saved?.usedClues || []);
-      const finalWagers = Array.isArray(saved?.finalWagers) ? saved.finalWagers : [];
-      const finalResults = Array.isArray(saved?.finalResults) ? saved.finalResults : [];
+
+      function clampNumber(value, min, max, fallback = 0) {
+        const number = Number(value);
+        if (!Number.isFinite(number)) return fallback;
+        return Math.min(max, Math.max(min, Math.trunc(number)));
+      }
+
+      function normalizeTeamName(name, index) {
+        const value = typeof name === "string" ? name.trim() : "";
+        return (value || `Team ${index + 1}`).slice(0, maxTeamNameLength);
+      }
+
+      function validClueIds() {
+        const ids = new Set();
+        data.categories.forEach((category, categoryIndex) => {
+          category.clues.forEach((clue, clueIndex) => {
+            ids.add(clueId(categoryIndex, clueIndex));
+          });
+        });
+        return ids;
+      }
+
+      function sanitizeTeams(teams) {
+        const sourceTeams = Array.isArray(teams) && teams.length ? teams : [
+          { name: "Team 1", score: 0 },
+          { name: "Team 2", score: 0 },
+          { name: "Team 3", score: 0 }
+        ];
+        const boundedTeams = sourceTeams.slice(0, maxTeamCount).map((team, index) => ({
+          name: normalizeTeamName(team?.name, index),
+          score: clampNumber(team?.score, -scoreLimit, scoreLimit)
+        }));
+        while (boundedTeams.length < minTeamCount) {
+          boundedTeams.push({ name: `Team ${boundedTeams.length + 1}`, score: 0 });
+        }
+        return boundedTeams;
+      }
+
+      function sanitizeFinalResult(result, wager) {
+        const validResults = new Set(["correct", "partial", "incorrect", "none"]);
+        if (!result || !validResults.has(result.result)) return { label: "", delta: 0 };
+        const maxDelta = result.result === "partial" ? Math.floor(wager / 2) : wager;
+        if (result.result === "correct") return { label: "Full", delta: maxDelta };
+        if (result.result === "partial") return { label: "Half", delta: maxDelta };
+        if (result.result === "incorrect") return { label: "Miss", delta: -maxDelta };
+        return { label: result.label === "Auto-reviewed" ? "Auto-reviewed" : "", delta: 0 };
+      }
+
+      const teams = sanitizeTeams(saved?.teams);
+      const validIds = validClueIds();
+      const usedClues = new Set((Array.isArray(saved?.usedClues) ? saved.usedClues : []).filter((id) => validIds.has(id)));
+      const finalWagers = Array.from({ length: teams.length }, (_, index) => {
+        const maxWager = Math.max(0, teams[index].score);
+        return clampNumber(saved?.finalWagers?.[index], 0, maxWager);
+      });
+      const finalResults = Array.from({ length: teams.length }, (_, index) => sanitizeFinalResult(saved?.finalResults?.[index], finalWagers[index]));
+      const finalScoredTeams = new Set((Array.isArray(saved?.finalScoredTeams) ? saved.finalScoredTeams : [])
+        .map((index) => Number(index))
+        .filter((index) => Number.isInteger(index) && index >= 0 && index < teams.length));
 
       function clueId(categoryIndex, clueIndex) {
         return `${categoryIndex}-${clueIndex}`;
@@ -82,7 +137,7 @@
           const delta = Number(result.delta) || 0;
           return delta ? `${result.label} ${formatDelta(delta)}` : result.label;
         }
-        if (saved?.finalScoredTeams?.includes(teamIndex)) return "Reviewed";
+        if (finalScoredTeams.has(teamIndex)) return "Reviewed";
         return "";
       }
 
