@@ -32,7 +32,7 @@ async function expectVisibleInViewport(page, locator) {
 test("root route opens directly to the gameboard", async ({ page }) => {
   await page.goto("/index.html");
   await expect(page).toHaveURL(/jeopardy-game\.html$/);
-  await expect(page.getByRole("heading", { name: "Safe Food, Fast Thinking" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Food Safety Face-Off" })).toBeVisible();
 });
 
 test("gameboard exposes host score sheet from footer", async ({ page, context }) => {
@@ -505,7 +505,7 @@ test("game layout avoids horizontal overflow at core viewports", async ({ page }
     await page.goto("/jeopardy-game.html?test=viewport");
     await page.evaluate(() => localStorage.clear());
     await page.reload();
-    await expect(page.getByRole("heading", { name: "Safe Food, Fast Thinking" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Food Safety Face-Off" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Final Jeopardy" })).toBeVisible();
     await expectNoPageOverflow(page);
   }

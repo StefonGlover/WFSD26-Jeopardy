@@ -1,5 +1,5 @@
 window.JeopardyData = {
-  title: "Safe Food, Fast Thinking",
+  title: "Food Safety Face-Off",
   subtitle: "World Food Safety Day 2026",
   theme: "From burden to solutions – safe food everywhere",
   themeStatement: "Use data, science, and shared ownership to turn food safety signals into targeted preventive action.",

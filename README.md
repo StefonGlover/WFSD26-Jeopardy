@@ -1,4 +1,4 @@
-# Safe Food, Fast Thinking
+# Food Safety Face-Off
 
 This folder contains the host-led World Food Safety Day Jeopardy game and the board-linked host score sheet.
 
