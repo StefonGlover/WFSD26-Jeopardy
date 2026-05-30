@@ -227,6 +227,21 @@ test("incorrect answer opens one-click steal close", async ({ page }) => {
   await expect(page.getByText("0/25")).toBeVisible();
 });
 
+test("steal target persists through reload and resume", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=steal-resume");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "Food Safety Basics for 200 points" }).click();
+  await page.getByRole("button", { name: "Reveal Response" }).click();
+  await page.getByRole("button", { name: "Incorrect -200" }).click();
+  await expect(page.locator("#modalTeamSelect")).toHaveValue("1");
+  await page.reload();
+  await page.getByRole("button", { name: "Resume Game" }).click();
+  await expect(page.locator("#modalTeamSelect")).toHaveValue("1");
+  await expect(page.getByRole("button", { name: "Correct +200" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Incorrect -200" })).toBeEnabled();
+});
+
 test("undo after a steal restores the full clue sequence", async ({ page }) => {
   await page.goto("/jeopardy-game.html?test=steal-undo");
   await page.evaluate(() => localStorage.clear());
@@ -478,6 +493,7 @@ test("final score controls stay visible across compact viewports", async ({ page
     await page.getByRole("button", { name: "Reveal Final Clue" }).click();
     await page.getByRole("button", { name: "Reveal Final Response" }).click();
     await expect(page.locator("#finalHostDetails")).not.toBeVisible();
+    await expectVisibleInViewport(page, page.locator("#finalHostDetailsToggle"));
     await expectVisibleInViewport(page, page.locator("#finalDialog .final-controls"));
     await expectVisibleInViewport(page, page.getByRole("button", { name: "Half +50" }));
     await expectNoPageOverflow(page);
@@ -630,6 +646,38 @@ test("legacy saved results cannot bypass final completion", async ({ page }) => 
   await page.getByRole("button", { name: "Resume Game" }).click();
   await expect(page.getByRole("heading", { name: /Winner/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Final Jeopardy" })).toBeVisible();
+});
+
+test("stale final scoring is ignored until final response is revealed", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=stale-final-scoring");
+  await page.evaluate((storageKey) => {
+    localStorage.clear();
+    localStorage.setItem(storageKey, JSON.stringify({
+      version: 1,
+      teams: [
+        { name: "A", score: 500 },
+        { name: "B", score: 300 }
+      ],
+      finalWagersLocked: false,
+      finalResponseRevealed: false,
+      finalWagers: [999999, -10],
+      finalResults: [
+        { result: "correct", label: "Full", delta: 999999 },
+        { result: "incorrect", label: "Miss", delta: -50 }
+      ],
+      finalScoredTeams: [0, 1]
+    }));
+  }, GAME_STATE_STORAGE_KEY);
+  await page.reload();
+  await page.getByRole("button", { name: "Resume Game" }).click();
+  await page.getByRole("button", { name: "Final Jeopardy" }).click();
+  await page.getByRole("button", { name: "Reveal Final Clue" }).click();
+  await page.getByRole("button", { name: "Reveal Final Response" }).click();
+  await expect(page.getByRole("heading", { name: /Winner/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Full +500" })).toBeEnabled();
+  const savedState = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey)), GAME_STATE_STORAGE_KEY);
+  expect(savedState.finalScoredTeams).toEqual([1]);
+  expect(savedState.finalResults[0]).toEqual({ result: "none", label: "", delta: 0 });
 });
 
 test("legacy final scoring restore sanitizes stale team indexes", async ({ page }) => {
@@ -847,6 +895,32 @@ test("host score sheet reflects saved scores, used clues, wagers, and final resu
   await expect(page.getByText("Result: Auto-reviewed")).toHaveCount(2);
 });
 
+test("host score sheet ignores stale final results before response reveal", async ({ page }) => {
+  await page.goto("/host-score-sheet.html?test=stale-final-results");
+  await page.evaluate((storageKey) => {
+    localStorage.clear();
+    localStorage.setItem(storageKey, JSON.stringify({
+      version: 1,
+      teams: [
+        { name: "A", score: 500 },
+        { name: "B", score: 300 }
+      ],
+      finalWagersLocked: false,
+      finalResponseRevealed: false,
+      finalWagers: [999999, -10],
+      finalResults: [
+        { result: "correct", label: "Full", delta: 999999 },
+        { result: "incorrect", label: "Miss", delta: -50 }
+      ],
+      finalScoredTeams: [0, 1]
+    }));
+  }, GAME_STATE_STORAGE_KEY);
+  await page.reload();
+  await expect(page.getByText("Wager: $500")).toBeVisible();
+  await expect(page.getByText("Result: Full +500")).toHaveCount(0);
+  await expect(page.getByText("Result: Miss -300")).toHaveCount(0);
+});
+
 test("malformed saved game state is normalized before restoring", async ({ page }) => {
   await page.goto("/jeopardy-game.html?test=malformed-state");
   await page.evaluate((storageKey) => {
@@ -918,6 +992,35 @@ test("malformed saved game state is normalized before restoring", async ({ page 
   expect(savedState.undoSnapshot.snapshot.undoSnapshot).toBeNull();
 });
 
+test("restored resolved current clue is reconciled with used clues", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=resolved-current-clue");
+  await page.evaluate((storageKey) => {
+    localStorage.clear();
+    localStorage.setItem(storageKey, JSON.stringify({
+      version: 1,
+      teams: [
+        { name: "A", score: 0 },
+        { name: "B", score: 0 }
+      ],
+      usedClues: [],
+      currentClue: {
+        id: "0-0",
+        scoredTeams: [],
+        noScore: true,
+        stealOpen: false,
+        resolved: true,
+        revealed: true
+      },
+      openDialog: "clue"
+    }));
+  }, GAME_STATE_STORAGE_KEY);
+  await page.reload();
+  await page.getByRole("button", { name: "Resume Game" }).click();
+  await expect(page.locator("#progressStatus")).toHaveText("1/25 clues");
+  await page.locator("#closeClueButton").click();
+  await expect(page.getByRole("button", { name: "Food Safety Basics for 100 points" })).toBeDisabled();
+});
+
 test("host score sheet sanitizes malformed saved state", async ({ page }) => {
   await page.goto("/host-score-sheet.html?test=malformed-state");
   await page.evaluate((storageKey) => {
@@ -933,6 +1036,7 @@ test("host score sheet sanitizes malformed saved state", async ({ page }) => {
         { name: "Extra", score: 0 }
       ],
       usedClues: ["0-0", "9-9", "not-a-clue"],
+      finalResponseRevealed: true,
       finalWagers: [99999],
       finalResults: [
         { result: "correct", label: "<script>alert(1)</script>", delta: 99999 }

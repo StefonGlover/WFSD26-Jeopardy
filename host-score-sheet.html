@@ -63,9 +63,11 @@
         return stateUtils.clampNumber(rawFinalWagers[index], 0, maxWager);
       });
       const finalResults = Array.from({ length: teams.length }, (_, index) => (
-        stateUtils.normalizeFinalResultForWager(saved?.finalResults?.[index], finalWagers[index])
+        finalResponseRevealed
+          ? stateUtils.normalizeFinalResultForWager(saved?.finalResults?.[index], finalWagers[index])
+          : stateUtils.sanitizeFinalResult(null)
       ));
-      const finalScoredTeams = new Set((Array.isArray(saved?.finalScoredTeams) ? saved.finalScoredTeams : [])
+      const finalScoredTeams = new Set((finalResponseRevealed && Array.isArray(saved?.finalScoredTeams) ? saved.finalScoredTeams : [])
         .map((index) => Number(index))
         .filter((index) => Number.isInteger(index) && index >= 0 && index < teams.length));
       if (finalResponseRevealed) {

@@ -1350,6 +1350,35 @@ dialog::backdrop {
     align-self: start;
     margin-top: 0;
   }
+
+  .final-panel[data-final-stage="score"] #finalResponseBlock {
+    grid-template-areas:
+      "toggle"
+      "answer"
+      "acceptance"
+      "rubric"
+      "details";
+  }
+
+  .final-panel[data-final-stage="score"] #finalResponseBlock > .audience-response {
+    grid-area: answer;
+  }
+
+  .final-panel[data-final-stage="score"] #finalAcceptanceStrip {
+    grid-area: acceptance;
+  }
+
+  .final-panel[data-final-stage="score"] #finalRubric {
+    grid-area: rubric;
+  }
+
+  .final-panel[data-final-stage="score"] #finalHostDetailsToggle {
+    grid-area: toggle;
+  }
+
+  .final-panel[data-final-stage="score"] #finalHostDetails {
+    grid-area: details;
+  }
 }
 
 .final-panel .pending-final-prompt {

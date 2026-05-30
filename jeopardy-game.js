@@ -233,6 +233,7 @@ function serializeCurrentClue() {
   return {
     id: state.currentClue.id,
     scoredTeams: [...state.currentClue.scoredTeams],
+    selectedTeam: sanitizeTeamIndex(state.currentClue.selectedTeam, state.activeTeam),
     noScore: Boolean(state.currentClue.noScore),
     stealOpen: Boolean(state.currentClue.stealOpen),
     resolved: Boolean(state.currentClue.resolved),
@@ -280,18 +281,26 @@ function restoreCurrentClue(savedClue) {
     state.currentClue = null;
     return;
   }
+  const scoredTeams = new Set((Array.isArray(savedClue.scoredTeams) ? savedClue.scoredTeams : [])
+    .map((index) => Number(index))
+    .filter((index) => Number.isInteger(index) && index >= 0 && index < state.teams.length));
   state.currentClue = {
     id: savedClue.id,
     category: clueInfo.category,
     clue: clueInfo.clue,
-    scoredTeams: new Set((Array.isArray(savedClue.scoredTeams) ? savedClue.scoredTeams : [])
-      .map((index) => Number(index))
-      .filter((index) => Number.isInteger(index) && index >= 0 && index < state.teams.length)),
+    scoredTeams,
     noScore: Boolean(savedClue.noScore),
     stealOpen: Boolean(savedClue.stealOpen),
-    resolved: Boolean(savedClue.resolved),
-    revealed: Boolean(savedClue.revealed)
+    resolved: Boolean(savedClue.resolved || savedClue.noScore),
+    revealed: Boolean(savedClue.revealed),
+    selectedTeam: sanitizeTeamIndex(savedClue.selectedTeam, state.activeTeam)
   };
+  if (state.currentClue.stealOpen && !state.currentClue.resolved && state.currentClue.scoredTeams.has(state.currentClue.selectedTeam)) {
+    state.currentClue.selectedTeam = getNextUnscoredTeamIndex(state.currentClue.selectedTeam);
+  }
+  if (state.currentClue.resolved || state.currentClue.noScore || state.currentClue.scoredTeams.size) {
+    state.usedClues.add(state.currentClue.id);
+  }
 }
 
 function sanitizeUsedClues(usedClues) {
@@ -300,6 +309,12 @@ function sanitizeUsedClues(usedClues) {
 
 function sanitizeTeams(teams) {
   return stateUtils.sanitizeTeams(teams, state.teams);
+}
+
+function sanitizeTeamIndex(value, fallback = 0) {
+  const safeFallback = Math.min(Math.max(0, Number(fallback) || 0), state.teams.length - 1);
+  const index = Number(value);
+  return Number.isInteger(index) && index >= 0 && index < state.teams.length ? index : safeFallback;
 }
 
 function normalizeFinalState() {
@@ -314,10 +329,14 @@ function normalizeFinalState() {
     const maxWager = getFinalWagerCap(index);
     return clampNumber(state.finalWagers[index], 0, maxWager);
   });
-  state.finalScoredTeams = new Set([...state.finalScoredTeams]
-    .filter((index) => Number.isInteger(index) && index >= 0 && index < state.teams.length));
+  state.finalScoredTeams = state.finalResponseRevealed
+    ? new Set([...state.finalScoredTeams]
+      .filter((index) => Number.isInteger(index) && index >= 0 && index < state.teams.length))
+    : new Set();
   state.finalResults = Array.from({ length: state.teams.length }, (_, index) => (
-    normalizeFinalResultForWager(state.finalResults[index], state.finalWagers[index])
+    state.finalResponseRevealed
+      ? normalizeFinalResultForWager(state.finalResults[index], state.finalWagers[index])
+      : sanitizeFinalResult(null)
   ));
 }
 
@@ -910,7 +929,13 @@ function renderTeamSelect() {
     option.textContent = team.name;
     modalTeamSelect.appendChild(option);
   });
-  modalTeamSelect.value = String(state.activeTeam);
+  const selectedTeam = state.currentClue
+    ? sanitizeTeamIndex(state.currentClue.selectedTeam, state.activeTeam)
+    : sanitizeTeamIndex(state.activeTeam);
+  if (state.currentClue) {
+    state.currentClue.selectedTeam = selectedTeam;
+  }
+  modalTeamSelect.value = String(selectedTeam);
 }
 
 function renderBoard() {
@@ -1139,7 +1164,8 @@ function openClue(categoryIndex, itemIndex) {
     noScore: false,
     stealOpen: false,
     resolved: false,
-    revealed: false
+    revealed: false,
+    selectedTeam: state.activeTeam
   };
   clueHostDetailsOpen = getDefaultHostDetailsOpen();
 
@@ -1200,7 +1226,8 @@ function getNextUnscoredTeamIndex(startIndex) {
 
 function applyScore(multiplier) {
   if (!state.currentClue) return;
-  const teamIndex = Number(modalTeamSelect.value);
+  const teamIndex = sanitizeTeamIndex(modalTeamSelect.value, state.currentClue.selectedTeam);
+  state.currentClue.selectedTeam = teamIndex;
   const wasStealAttempt = Boolean(state.currentClue.stealOpen);
   let nextStealTeamIndex = null;
   if (
@@ -1227,10 +1254,12 @@ function applyScore(multiplier) {
     state.currentClue.resolved = true;
     if (wasStealAttempt) {
       modalTeamSelect.value = String(state.activeTeam);
+      state.currentClue.selectedTeam = state.activeTeam;
     }
   } else {
     state.currentClue.stealOpen = true;
     nextStealTeamIndex = getNextUnscoredTeamIndex(teamIndex);
+    state.currentClue.selectedTeam = nextStealTeamIndex;
   }
   renderScoreboard();
   animateScore(teamIndex, multiplier);
@@ -1991,6 +2020,9 @@ function bindEvents() {
   });
   modalTeamSelect.addEventListener("change", () => {
     if (isDialogOpen(clueDialog)) {
+      if (state.currentClue) {
+        state.currentClue.selectedTeam = sanitizeTeamIndex(modalTeamSelect.value, state.currentClue.selectedTeam);
+      }
       updateScoreButtons();
       saveState();
       return;
