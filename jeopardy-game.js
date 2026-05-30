@@ -51,6 +51,8 @@ const undoButton = document.getElementById("undoButton");
 const setupDialog = document.getElementById("setupDialog");
 const setupForm = document.getElementById("setupForm");
 const teamFields = document.getElementById("teamFields");
+const addTeamButton = document.getElementById("addTeamButton");
+const removeTeamButton = document.getElementById("removeTeamButton");
 const clueDialog = document.getElementById("clueDialog");
 const cluePanel = clueDialog.querySelector(".clue-panel");
 const clueMeta = document.getElementById("clueMeta");
@@ -96,6 +98,7 @@ const finalBridge = document.getElementById("finalBridge");
 const finalRiskSignal = document.getElementById("finalRiskSignal");
 const finalRiskConcern = document.getElementById("finalRiskConcern");
 const finalRiskAction = document.getElementById("finalRiskAction");
+const finalWagerHelper = document.getElementById("finalWagerHelper");
 const wagerGrid = document.getElementById("wagerGrid");
 const finalButton = document.getElementById("finalButton");
 const finalPrimaryButton = document.getElementById("finalPrimaryButton");
@@ -585,8 +588,9 @@ function updateProgress() {
   const totalClues = getTotalClues();
   const progressRatio = totalClues ? state.usedClues.size / totalClues : 0;
   const stage = getCurrentJourneyStage(progressRatio);
-  progressStatus.textContent = `${state.usedClues.size}/${totalClues}`;
+  progressStatus.textContent = `${state.usedClues.size}/${totalClues} clues`;
   progressStatus.style.setProperty("--progress-percent", `${Math.round(progressRatio * 100)}%`);
+  progressStatus.title = `${state.usedClues.size} of ${totalClues} clues played`;
   progressStatus.setAttribute(
     "aria-label",
     `${state.usedClues.size} of ${totalClues} clues played. Current journey stage: ${stage}.`
@@ -732,12 +736,32 @@ function getAudioContext({ force = false } = {}) {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return null;
   if (!state.audioContext) {
-    state.audioContext = new AudioContextClass();
+    try {
+      state.audioContext = new AudioContextClass();
+    } catch (error) {
+      return null;
+    }
   }
   if (force && state.audioContext.state === "suspended") {
     state.audioContext.resume().catch(() => {});
   }
   return state.audioContext;
+}
+
+function primeAudioContext(audio) {
+  if (!audio || audio.__jeopardyPrimed) return;
+  try {
+    const oscillator = audio.createOscillator();
+    const gain = audio.createGain();
+    gain.gain.setValueAtTime(0.0001, audio.currentTime);
+    oscillator.connect(gain);
+    gain.connect(audio.destination);
+    oscillator.start(audio.currentTime);
+    oscillator.stop(audio.currentTime + 0.02);
+    audio.__jeopardyPrimed = true;
+  } catch (error) {
+    // Some browser policies only allow resume without a primer; playback still falls back below.
+  }
 }
 
 async function unlockAudio() {
@@ -750,7 +774,9 @@ async function unlockAudio() {
       return null;
     }
   }
-  return audio.state === "running" ? audio : null;
+  if (audio.state !== "running") return null;
+  primeAudioContext(audio);
+  return audio;
 }
 
 function tone(audio, frequency, start, duration, volume, type = "sine") {
@@ -799,7 +825,7 @@ async function playSound(kind) {
   }
   const now = audio.currentTime + 0.01;
   getSoundPattern(kind).forEach((item) => {
-    tone(audio, item.frequency, now + item.start, item.duration, item.volume * 0.24, item.type);
+    tone(audio, item.frequency, now + item.start, item.duration, item.volume * 0.48, item.type);
   });
 }
 
@@ -826,7 +852,13 @@ function renderScoreboard() {
     name.textContent = team.name;
     const score = document.createElement("strong");
     score.textContent = formatScore(team.score);
-    card.append(name, score);
+    card.append(name);
+    if (index === state.activeTeam) {
+      const badge = textElement("small", "Active", "active-team-badge");
+      badge.setAttribute("aria-hidden", "true");
+      card.appendChild(badge);
+    }
+    card.append(score);
     card.addEventListener("click", () => {
       state.activeTeam = index;
       renderScoreboard();
@@ -963,6 +995,7 @@ function renderSetupFields(teams = state.teams) {
     label.appendChild(input);
     teamFields.appendChild(label);
   });
+  updateTeamSetupControls(teams);
 }
 
 function readSetupDraftTeams() {
@@ -972,6 +1005,14 @@ function readSetupDraftTeams() {
     name: input.value.trim() || `Team ${index + 1}`,
     score: setupDraftTeams?.[index]?.score ?? state.teams[index]?.score ?? 0
   }));
+}
+
+function updateTeamSetupControls(teams = setupDraftTeams || state.teams) {
+  const teamCount = teams.length;
+  addTeamButton.disabled = teamCount >= MAX_TEAM_COUNT;
+  removeTeamButton.disabled = teamCount <= MIN_TEAM_COUNT;
+  addTeamButton.title = addTeamButton.disabled ? `Maximum ${MAX_TEAM_COUNT} teams` : "";
+  removeTeamButton.title = removeTeamButton.disabled ? `Minimum ${MIN_TEAM_COUNT} teams` : "";
 }
 
 function openSetup() {
@@ -1297,14 +1338,6 @@ async function resetGame() {
   showToast("Game reset", "neutral");
 }
 
-function nextTeam() {
-  state.activeTeam = (state.activeTeam + 1) % state.teams.length;
-  renderScoreboard();
-  renderTeamSelect();
-  updateBoardStatus();
-  saveState();
-}
-
 function showResultsDialog(returnFocus) {
   renderEndScreen();
   showDialog(endDialog, returnFocus);
@@ -1335,6 +1368,9 @@ function openFinal() {
   finalResponseBlock.hidden = !state.finalResponseRevealed;
   if (!state.finalResponseRevealed) {
     finalHostDetailsOpen = getDefaultFinalHostDetailsOpen();
+  }
+  if (finalWagerHelper) {
+    finalWagerHelper.hidden = state.finalWagersLocked || state.finalResponseRevealed || state.finalComplete;
   }
   updateFinalHostDetailsDisclosure();
   renderFinalPrompt();
@@ -1440,6 +1476,9 @@ function renderFinalStage() {
 }
 
 function updateFinalControls() {
+  if (finalWagerHelper) {
+    finalWagerHelper.hidden = state.finalWagersLocked || state.finalResponseRevealed || state.finalComplete;
+  }
   if (state.finalComplete) {
     finalPrimaryButton.hidden = true;
     finalPrimaryButton.disabled = true;
@@ -1460,7 +1499,7 @@ function updateFinalControls() {
   }
   finalPrimaryButton.hidden = false;
   finalPrimaryButton.disabled = false;
-  finalPrimaryButton.textContent = state.finalWagersLocked ? "Reveal Final Response" : "Lock Wagers & Reveal Clue";
+  finalPrimaryButton.textContent = state.finalWagersLocked ? "Reveal Final Response" : "Reveal Final Clue";
 }
 
 function normalizeFinalWagers() {
@@ -1834,20 +1873,6 @@ function handleKeyboardShortcuts(event) {
     return;
   }
 
-  if (
-    key === "n" &&
-    !isDialogOpen(setupDialog) &&
-    !isDialogOpen(clueDialog) &&
-    !isDialogOpen(finalDialog) &&
-    !isDialogOpen(rulesDialog) &&
-    !isDialogOpen(hostNotesDialog) &&
-    !isDialogOpen(resumeDialog) &&
-    !isDialogOpen(confirmDialog) &&
-    !isDialogOpen(endDialog)
-  ) {
-    event.preventDefault();
-    nextTeam();
-  }
 }
 
 function bindEvents() {
@@ -1860,7 +1885,6 @@ function bindEvents() {
   document.getElementById("closeHostNotesIcon").addEventListener("click", () => closeDialog(hostNotesDialog));
   undoButton.addEventListener("click", undoLastAction);
   document.getElementById("resetButton").addEventListener("click", resetGame);
-  document.getElementById("nextTeamButton").addEventListener("click", nextTeam);
   finalButton.addEventListener("click", () => openFinal());
   closeClueButton.addEventListener("click", closeClueFromHost);
   clueDialog.addEventListener("cancel", (event) => {
@@ -1890,15 +1914,15 @@ function bindEvents() {
       }
     });
   });
-  document.getElementById("addTeamButton").addEventListener("click", () => {
+  addTeamButton.addEventListener("click", () => {
     setupDraftTeams = readSetupDraftTeams();
-    if (setupDraftTeams.length >= 5) return;
+    if (setupDraftTeams.length >= MAX_TEAM_COUNT) return;
     setupDraftTeams.push({ name: `Team ${setupDraftTeams.length + 1}`, score: 0 });
     renderSetupFields(setupDraftTeams);
   });
-  document.getElementById("removeTeamButton").addEventListener("click", () => {
+  removeTeamButton.addEventListener("click", () => {
     setupDraftTeams = readSetupDraftTeams();
-    if (setupDraftTeams.length <= 2) return;
+    if (setupDraftTeams.length <= MIN_TEAM_COUNT) return;
     setupDraftTeams.pop();
     renderSetupFields(setupDraftTeams);
   });

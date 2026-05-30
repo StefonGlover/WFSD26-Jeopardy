@@ -39,7 +39,9 @@ test("gameboard exposes host score sheet from footer", async ({ page, context })
   await page.goto("/jeopardy-game.html?test=score-sheet-footer");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  const scoreSheetLink = page.getByRole("link", { name: "Host Score Sheet" });
+  await expect(page.getByRole("button", { name: "Host Notes" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Next Team" })).toHaveCount(0);
+  const scoreSheetLink = page.getByRole("link", { name: "Score Sheet" });
   await expect(scoreSheetLink).toBeVisible();
   await expect(scoreSheetLink).toHaveAttribute("href", "host-score-sheet.html");
   await expect(scoreSheetLink).toHaveAttribute("target", "_blank");
@@ -50,6 +52,129 @@ test("gameboard exposes host score sheet from footer", async ({ page, context })
   await expect(scoreSheetPage).toHaveURL(/host-score-sheet\.html$/);
   await expect(scoreSheetPage.getByRole("heading", { name: "Host Score Sheet" })).toBeVisible();
   await scoreSheetPage.close();
+});
+
+test("sound toggle unlocks Web Audio from a user gesture", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__audioStats = { contexts: 0, resumes: 0, oscillatorStarts: 0, oscillatorStops: 0 };
+    class FakeAudioContext {
+      constructor() {
+        window.__audioStats.contexts += 1;
+        this.currentTime = 0;
+        this.destination = {};
+        this.state = "suspended";
+      }
+
+      resume() {
+        window.__audioStats.resumes += 1;
+        this.state = "running";
+        return Promise.resolve();
+      }
+
+      createOscillator() {
+        return {
+          frequency: { setValueAtTime() {} },
+          type: "sine",
+          connect() {},
+          start() { window.__audioStats.oscillatorStarts += 1; },
+          stop() { window.__audioStats.oscillatorStops += 1; }
+        };
+      }
+
+      createGain() {
+        return {
+          gain: {
+            setValueAtTime() {},
+            exponentialRampToValueAtTime() {}
+          },
+          connect() {}
+        };
+      }
+    }
+    window.AudioContext = FakeAudioContext;
+    window.webkitAudioContext = undefined;
+  });
+  await page.goto("/jeopardy-game.html?test=sound-web-audio");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "Sound is off. Turn sound on." }).click();
+  await expect(page.getByRole("button", { name: "Sound is on. Turn sound off." })).toBeVisible();
+  const stats = await page.evaluate(() => window.__audioStats);
+  expect(stats.contexts).toBe(1);
+  expect(stats.resumes).toBeGreaterThanOrEqual(1);
+  expect(stats.oscillatorStarts).toBeGreaterThanOrEqual(3);
+  expect(stats.oscillatorStops).toBeGreaterThanOrEqual(3);
+});
+
+test("sound toggle falls back to generated audio when Web Audio is unavailable", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__audioFallbackStats = { constructed: 0, played: 0, revoked: 0 };
+    window.AudioContext = undefined;
+    window.webkitAudioContext = undefined;
+    const nativeRevokeObjectURL = URL.revokeObjectURL.bind(URL);
+    URL.revokeObjectURL = (url) => {
+      window.__audioFallbackStats.revoked += 1;
+      nativeRevokeObjectURL(url);
+    };
+    window.Audio = class FakeAudio {
+      constructor(url) {
+        window.__audioFallbackStats.constructed += 1;
+        this.url = url;
+        this.volume = 1;
+      }
+
+      addEventListener() {}
+
+      play() {
+        window.__audioFallbackStats.played += 1;
+        return Promise.resolve();
+      }
+    };
+  });
+  await page.goto("/jeopardy-game.html?test=sound-fallback");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "Sound is off. Turn sound on." }).click();
+  await expect(page.getByRole("button", { name: "Sound is on. Turn sound off." })).toBeVisible();
+  const stats = await page.evaluate(() => window.__audioFallbackStats);
+  expect(stats.constructed).toBe(1);
+  expect(stats.played).toBe(1);
+});
+
+test("team cards clearly show and change the active team", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=active-team-badge");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await expect(page.locator(".team-card.active")).toContainText("Team 1");
+  await expect(page.locator(".team-card.active .active-team-badge")).toHaveText("Active");
+  await expect(page.getByRole("button", { name: /Team 1/ })).toHaveAttribute("aria-pressed", "true");
+
+  await page.getByRole("button", { name: /Team 2/ }).click();
+  await expect(page.locator(".team-card.active")).toContainText("Team 2");
+  await expect(page.locator(".team-card.active .active-team-badge")).toHaveText("Active");
+  await expect(page.getByRole("button", { name: /Team 2/ })).toHaveAttribute("aria-pressed", "true");
+});
+
+test("team setup disables add and remove at team limits", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=team-setup-limits");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "Teams" }).click();
+  const addTeam = page.getByRole("button", { name: "Add Team" });
+  const removeTeam = page.getByRole("button", { name: "Remove Team" });
+
+  await expect(addTeam).toBeEnabled();
+  await expect(removeTeam).toBeEnabled();
+  await removeTeam.click();
+  await expect(page.locator("#teamFields label")).toHaveCount(2);
+  await expect(removeTeam).toBeDisabled();
+
+  await addTeam.click();
+  await addTeam.click();
+  await addTeam.click();
+  await expect(page.locator("#teamFields label")).toHaveCount(5);
+  await expect(addTeam).toBeDisabled();
+  await expect(removeTeam).toBeEnabled();
 });
 
 test("jeopardy clue can reveal, no-score, and undo", async ({ page }) => {
@@ -140,7 +265,8 @@ test("no-score auto-close resumes without reopening clue dialog", async ({ page 
   await page.reload();
   await page.getByRole("button", { name: "Resume Game" }).click();
   await expect(page.locator("#clueDialog")).not.toBeVisible();
-  await expect(page.locator("#progressStatus")).toHaveText("1/25");
+  await expect(page.locator("#progressStatus")).toHaveText("1/25 clues");
+  await expect(page.locator("#progressStatus")).toHaveAttribute("aria-label", /1 of 25 clues played/);
 });
 
 test("final zero wagers auto-review and show results without extra click", async ({ page }) => {
@@ -149,7 +275,8 @@ test("final zero wagers auto-review and show results without extra click", async
   await page.reload();
   await page.getByRole("button", { name: "Final Jeopardy" }).click();
   await expect(page.getByRole("heading", { name: "Start Final Jeopardy?" })).toHaveCount(0);
-  await page.getByRole("button", { name: "Lock Wagers & Reveal Clue" }).click();
+  await expect(page.getByText("Revealing locks wagers.")).toBeVisible();
+  await page.getByRole("button", { name: "Reveal Final Clue" }).click();
   await page.getByRole("button", { name: "Reveal Final Response" }).click();
   await expect(page.getByRole("heading", { name: /Winner/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Mark Reviewed" })).toHaveCount(0);
@@ -170,7 +297,8 @@ test("final guided scoring supports half credit and hides early results", async 
   await page.getByRole("button", { name: "Correct +100" }).click();
   await page.getByRole("button", { name: "Final Jeopardy" }).click();
   await page.getByLabel("Team 1 wager").fill("100");
-  await page.getByRole("button", { name: "Lock Wagers & Reveal Clue" }).click();
+  await expect(page.getByText("Revealing locks wagers.")).toBeVisible();
+  await page.getByRole("button", { name: "Reveal Final Clue" }).click();
   await expect(page.getByRole("button", { name: "Reveal Final Response" })).toBeVisible();
   await page.getByRole("button", { name: "Reveal Final Response" }).click();
   await expect(page.getByRole("button", { name: "Host Details" })).toBeVisible();
@@ -206,7 +334,7 @@ test("final score controls stay visible across compact viewports", async ({ page
     await page.getByRole("button", { name: "Correct +100" }).click();
     await page.getByRole("button", { name: "Final Jeopardy" }).click();
     await page.getByLabel("Team 1 wager").fill("100");
-    await page.getByRole("button", { name: "Lock Wagers & Reveal Clue" }).click();
+    await page.getByRole("button", { name: "Reveal Final Clue" }).click();
     await page.getByRole("button", { name: "Reveal Final Response" }).click();
     await expect(page.locator("#finalHostDetails")).not.toBeVisible();
     await expectVisibleInViewport(page, page.locator("#finalDialog .final-controls"));
@@ -303,7 +431,7 @@ test("streamlined game controls stay removed from live UI", async ({ page }) => 
   await expect(page.getByRole("button", { name: "Show Winner" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Start 30s|Stop Timer/ })).toHaveCount(0);
   await expect(page.getByText("Challenge Clue")).toHaveCount(0);
-  await page.getByRole("button", { name: "Notes" }).click();
+  await page.getByRole("button", { name: "Host Notes" }).click();
   await expect(page.getByText("Shortcuts")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Print Score Sheet" })).toHaveCount(0);
   await expect(page.getByText("Recent Plays")).toBeVisible();
@@ -408,7 +536,7 @@ test("primary dialogs remain usable across target viewport families", async ({ p
     await expectNoPageOverflow(page);
     await page.getByRole("button", { name: "Close rules" }).click();
 
-    await page.getByRole("button", { name: "Notes" }).click();
+    await page.getByRole("button", { name: "Host Notes" }).click();
     await expect(page.getByRole("heading", { name: "Host Notes" })).toBeVisible();
     await expect(page.getByText("Recent Plays")).toBeVisible();
     await expectNoPageOverflow(page);
@@ -424,7 +552,7 @@ test("primary dialogs remain usable across target viewport families", async ({ p
     await page.getByRole("button", { name: "Final Jeopardy" }).click();
     await expect(page.getByRole("heading", { name: "Start Final Jeopardy?" })).toHaveCount(0);
     await expect(page.getByLabel("Team 1 wager")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Lock Wagers & Reveal Clue" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reveal Final Clue" })).toBeVisible();
     await expectNoPageOverflow(page);
     await page.getByRole("button", { name: "Back to board" }).click();
   }
@@ -533,7 +661,7 @@ test("malformed saved game state is normalized before restoring", async ({ page 
   await page.reload();
   await page.getByRole("button", { name: "Resume Game" }).click();
   await expect(page.locator(".team-card")).toHaveCount(5);
-  await expect(page.locator("#progressStatus")).toHaveText("1/25");
+  await expect(page.locator("#progressStatus")).toHaveText("1/25 clues");
   await expect(page.locator('[data-wager-index="0"]')).toHaveValue("100");
   await expect(page.getByRole("button", { name: "Full +100" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Miss -50" })).toBeVisible();
