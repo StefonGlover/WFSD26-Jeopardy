@@ -736,12 +736,32 @@ function getAudioContext({ force = false } = {}) {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return null;
   if (!state.audioContext) {
-    state.audioContext = new AudioContextClass();
+    try {
+      state.audioContext = new AudioContextClass();
+    } catch (error) {
+      return null;
+    }
   }
   if (force && state.audioContext.state === "suspended") {
     state.audioContext.resume().catch(() => {});
   }
   return state.audioContext;
+}
+
+function primeAudioContext(audio) {
+  if (!audio || audio.__jeopardyPrimed) return;
+  try {
+    const oscillator = audio.createOscillator();
+    const gain = audio.createGain();
+    gain.gain.setValueAtTime(0.0001, audio.currentTime);
+    oscillator.connect(gain);
+    gain.connect(audio.destination);
+    oscillator.start(audio.currentTime);
+    oscillator.stop(audio.currentTime + 0.02);
+    audio.__jeopardyPrimed = true;
+  } catch (error) {
+    // Some browser policies only allow resume without a primer; playback still falls back below.
+  }
 }
 
 async function unlockAudio() {
@@ -754,7 +774,9 @@ async function unlockAudio() {
       return null;
     }
   }
-  return audio.state === "running" ? audio : null;
+  if (audio.state !== "running") return null;
+  primeAudioContext(audio);
+  return audio;
 }
 
 function tone(audio, frequency, start, duration, volume, type = "sine") {
@@ -803,7 +825,7 @@ async function playSound(kind) {
   }
   const now = audio.currentTime + 0.01;
   getSoundPattern(kind).forEach((item) => {
-    tone(audio, item.frequency, now + item.start, item.duration, item.volume * 0.24, item.type);
+    tone(audio, item.frequency, now + item.start, item.duration, item.volume * 0.48, item.type);
   });
 }
 

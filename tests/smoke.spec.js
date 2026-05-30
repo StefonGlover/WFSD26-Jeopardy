@@ -54,6 +54,93 @@ test("gameboard exposes host score sheet from footer", async ({ page, context })
   await scoreSheetPage.close();
 });
 
+test("sound toggle unlocks Web Audio from a user gesture", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__audioStats = { contexts: 0, resumes: 0, oscillatorStarts: 0, oscillatorStops: 0 };
+    class FakeAudioContext {
+      constructor() {
+        window.__audioStats.contexts += 1;
+        this.currentTime = 0;
+        this.destination = {};
+        this.state = "suspended";
+      }
+
+      resume() {
+        window.__audioStats.resumes += 1;
+        this.state = "running";
+        return Promise.resolve();
+      }
+
+      createOscillator() {
+        return {
+          frequency: { setValueAtTime() {} },
+          type: "sine",
+          connect() {},
+          start() { window.__audioStats.oscillatorStarts += 1; },
+          stop() { window.__audioStats.oscillatorStops += 1; }
+        };
+      }
+
+      createGain() {
+        return {
+          gain: {
+            setValueAtTime() {},
+            exponentialRampToValueAtTime() {}
+          },
+          connect() {}
+        };
+      }
+    }
+    window.AudioContext = FakeAudioContext;
+    window.webkitAudioContext = undefined;
+  });
+  await page.goto("/jeopardy-game.html?test=sound-web-audio");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "Sound is off. Turn sound on." }).click();
+  await expect(page.getByRole("button", { name: "Sound is on. Turn sound off." })).toBeVisible();
+  const stats = await page.evaluate(() => window.__audioStats);
+  expect(stats.contexts).toBe(1);
+  expect(stats.resumes).toBeGreaterThanOrEqual(1);
+  expect(stats.oscillatorStarts).toBeGreaterThanOrEqual(3);
+  expect(stats.oscillatorStops).toBeGreaterThanOrEqual(3);
+});
+
+test("sound toggle falls back to generated audio when Web Audio is unavailable", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.__audioFallbackStats = { constructed: 0, played: 0, revoked: 0 };
+    window.AudioContext = undefined;
+    window.webkitAudioContext = undefined;
+    const nativeRevokeObjectURL = URL.revokeObjectURL.bind(URL);
+    URL.revokeObjectURL = (url) => {
+      window.__audioFallbackStats.revoked += 1;
+      nativeRevokeObjectURL(url);
+    };
+    window.Audio = class FakeAudio {
+      constructor(url) {
+        window.__audioFallbackStats.constructed += 1;
+        this.url = url;
+        this.volume = 1;
+      }
+
+      addEventListener() {}
+
+      play() {
+        window.__audioFallbackStats.played += 1;
+        return Promise.resolve();
+      }
+    };
+  });
+  await page.goto("/jeopardy-game.html?test=sound-fallback");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "Sound is off. Turn sound on." }).click();
+  await expect(page.getByRole("button", { name: "Sound is on. Turn sound off." })).toBeVisible();
+  const stats = await page.evaluate(() => window.__audioFallbackStats);
+  expect(stats.constructed).toBe(1);
+  expect(stats.played).toBe(1);
+});
+
 test("team cards clearly show and change the active team", async ({ page }) => {
   await page.goto("/jeopardy-game.html?test=active-team-badge");
   await page.evaluate(() => localStorage.clear());
