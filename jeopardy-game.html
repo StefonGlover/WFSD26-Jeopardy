@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Safe Food, Fast Thinking</title>
     <link rel="icon" href="assets/generated/coca-cola-logo.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="jeopardy-game.css?v=90bbcbe6cf">
+    <link rel="stylesheet" href="jeopardy-game.css?v=24c78eecc4">
   </head>
   <body>
     <main class="game-shell">
@@ -140,28 +140,20 @@
           <button class="icon-button modal-close-button" type="button" id="closeFinalButton" title="Back to board" aria-label="Back to board">X</button>
         </div>
         <div class="clue-card">
-          <ol class="final-steps" id="finalSteps" aria-label="Final Jeopardy flow">
-            <li data-final-step="wagers">Wagers</li>
-            <li data-final-step="prompt">Prompt</li>
-            <li data-final-step="response">Response</li>
-            <li data-final-step="score">Score</li>
-            <li data-final-step="results">Results</li>
-          </ol>
           <p class="clue-label">Final Clue</p>
           <h2 id="finalClue"></h2>
-          <div class="wager-grid" id="wagerGrid"></div>
           <div class="response-block" id="finalResponseBlock" hidden>
             <div class="audience-response">
               <p class="clue-label">Strong Response Includes</p>
               <h3 id="finalResponse"></h3>
             </div>
+            <div class="acceptance-strip" id="finalAcceptanceStrip" hidden></div>
+            <div class="final-rubric" id="finalRubric" hidden>
+              <p class="clue-label">Scoring Rubric</p>
+              <div id="finalRubricList"></div>
+            </div>
             <button class="text-button host-details-toggle" type="button" id="finalHostDetailsToggle" aria-controls="finalHostDetails" aria-expanded="true">Host Details</button>
             <div class="host-details" id="finalHostDetails">
-              <div class="acceptance-strip" id="finalAcceptanceStrip" hidden></div>
-              <div class="final-rubric" id="finalRubric" hidden>
-                <p class="clue-label">Scoring Rubric</p>
-                <div id="finalRubricList"></div>
-              </div>
               <p class="why-title">Why It Matters</p>
               <p id="finalWhy"></p>
               <div class="glossary-strip" id="finalGlossaryStrip" aria-label="Final World Food Safety Day theme glossary"></div>
@@ -185,6 +177,7 @@
               </div>
             </div>
           </div>
+          <div class="wager-grid" id="wagerGrid"></div>
         </div>
         <div class="host-controls final-controls">
           <button class="primary-button" type="button" id="finalPrimaryButton">Lock Wagers &amp; Reveal Clue</button>
@@ -278,6 +271,6 @@
     <script src="jeopardy-data.js?v=b244a25d60"></script>
     <script src="jeopardy-sound.js?v=bf4ef04a83"></script>
     <script src="jeopardy-dialogs.js?v=20d83550f6"></script>
-    <script src="jeopardy-game.js?v=c3aa22c3c8"></script>
+    <script src="jeopardy-game.js?v=02728c70e3"></script>
   </body>
 </html>
