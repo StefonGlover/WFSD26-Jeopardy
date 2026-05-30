@@ -17,8 +17,9 @@ window.JeopardyData = {
   ],
   hostNotes: [
     { title: "Intro", text: "Welcome teams. Today we are practicing how Coca-Cola teams move from burden signals to practical food safety solutions." },
-    { title: "Scoring", text: "Reveal the response before scoring. Correct adds the tile value; incorrect subtracts it." },
+    { title: "Scoring", text: "Reveal the response before scoring. Correct adds the tile value; incorrect subtracts it. Use host discretion for equivalent answers and Final rubric calls; do not change point values during play." },
     { title: "Steal", text: "After a miss, choose another team for one optional steal or close the clue with no score." },
+    { title: "Confidentiality", text: "Keep examples generic and non-confidential. Do not share formulas, KORE details, audit results, real site layouts, supplier names, active incidents, or unreleased business information." },
     { title: "Close", text: "Ask each team to name one signal they will watch for and one prevention action they can strengthen." }
   ],
   hashtag: "#WorldFoodSafetyDay",
@@ -26,7 +27,7 @@ window.JeopardyData = {
   themeGlossary: {
     burden: "Foodborne illness risk and public health impact, with business effects such as disruption, cost, and trust.",
     signal: "Complaints, records, trends, holds, supplier data, observations, and other non-confidential indicators.",
-    solution: "Risk ranking, HACCP thinking, targeted preventive action, traceability, training, and verification.",
+    solution: "Risk ranking, Hazard Analysis and Critical Control Points (HACCP) thinking, targeted preventive action, traceability, training, and verification.",
     everywhere: "Every function has a role in prevention, escalation, evidence, and consumer protection."
   },
   rules: [
@@ -126,7 +127,7 @@ window.JeopardyData = {
         },
         {
           value: 300,
-          clue: "An urgent shipment arrives with an expired supplier approval, COA, specification, or required food-safety document. What should happen before use?",
+          clue: "An urgent shipment arrives with an expired supplier approval, Certificate of Analysis (COA), specification, or required food safety document. What should happen before use?",
           response: "Hold or block use, verify requirements, obtain current approval/documentation, and escalate.",
           hostAccepts: "Correct answers should include blocking/holding use plus verification or escalation. Prompt if the answer skips the hold/block step.",
           why: "Urgency should not override evidence that a supplier, material, or package is approved for use.",
@@ -147,8 +148,8 @@ window.JeopardyData = {
         {
           value: 500,
           clue: "Two instructions conflict: an email says one thing, the controlled document says another. What should the team do and why?",
-          response: "Stop, verify the current approved instruction with the process owner or QA, follow the controlled process, and escalate/document the conflict.",
-          hostAccepts: "Accept answers that avoid improvising and include verification with QA/process owner plus escalation. Also accept urgent approved hold/deviation instructions when documented through the proper channel.",
+          response: "Stop, verify the current approved instruction with the process owner or Quality Assurance (QA), follow the controlled process, and escalate/document the conflict.",
+          hostAccepts: "Accept answers that avoid improvising and include verification with Quality Assurance (QA) or the process owner plus escalation. Also accept urgent approved hold/deviation instructions when documented through the proper channel.",
           why: "Controlled instructions protect teams from outdated, informal, or conflicting direction, while urgent safety decisions still need approved documentation.",
           tag: "Training",
           bridge: "One trusted source of truth helps teams solve consistently across locations and functions.",
@@ -185,13 +186,13 @@ window.JeopardyData = {
         },
         {
           value: 300,
-          clue: "A sanitation or CIP verification trend keeps drifting toward the limit. A one-time adjustment is not enough; the team needs this kind of action.",
+          clue: "A sanitation or clean-in-place (CIP) verification trend keeps drifting toward the limit. A one-time adjustment is not enough; the team needs this kind of action.",
           response: "A targeted preventive action with ownership and effectiveness verification.",
-          hostAccepts: "Accept preventive action, system fix, CAPA with ownership, recurrence prevention, parameter review, maintenance/training action, or effectiveness check.",
-          why: "A recurring sanitation or CIP signal needs a system fix that reduces recurrence, not another temporary adjustment.",
+          hostAccepts: "Accept preventive action, system fix, Corrective and Preventive Action (CAPA) with ownership, recurrence prevention, parameter review, maintenance/training action, or effectiveness check.",
+          why: "A recurring sanitation or clean-in-place signal needs a system fix that reduces recurrence, not another temporary adjustment.",
           tag: "Prevention",
           bridge: "Repeated burden becomes solution when the fix is designed to prevent the next drift.",
-          riskCard: { signal: "Recurring sanitation/CIP drift", risk: "Control weakness repeats", action: "Create targeted prevention with ownership" }
+          riskCard: { signal: "Recurring sanitation or clean-in-place drift", risk: "Control weakness repeats", action: "Create targeted prevention with ownership" }
         },
         {
           value: 400,
@@ -210,7 +211,7 @@ window.JeopardyData = {
           hostAccepts: "Correct answers should include at least four of these: collect evidence, identify patterns, rank risk, assign owners, apply targeted controls, verify effectiveness, and escalate when needed.",
           why: "The solution is strongest when evidence guides action and the team confirms the risk actually went down.",
           tag: "Targeted Action",
-          bridge: "This is the WHO 2026 theme in practice: burden signals become targeted, verified solutions.",
+          bridge: "This is the World Health Organization (WHO) 2026 theme in practice: burden signals become targeted, verified solutions.",
           riskCard: { signal: "Weak signals across data sources", risk: "Unranked burden grows", action: "Analyze, prioritize, assign, control, and verify" }
         }
       ]
@@ -266,7 +267,7 @@ window.JeopardyData = {
           value: 500,
           clue: "Myth or Fact: A small data gap is harmless if the team eventually escalates. Defend your answer with two possible impacts.",
           response: "Myth. Late or incomplete data can delay traceability, product disposition, customer communication, holds, or consumer protection.",
-          hostAccepts: "Accept Myth plus any two plausible impacts: delayed traceability, delayed holds, wrong disposition, incomplete investigation, customer/consumer communication delay, or slower consumer protection.",
+          hostAccepts: "Accept Myth plus any two plausible impacts: delayed traceability, delayed holds, wrong disposition, incomplete investigation, customer and consumer communication delay, or slower consumer protection.",
           why: "The harder lesson is not just that data gaps matter; it is that delay and incompleteness can slow multiple protection actions at once.",
           tag: "Traceability",
           bridge: "Complete facts and timely escalation turn a possible burden into a coordinated solution.",
@@ -336,15 +337,15 @@ window.JeopardyData = {
   ],
   finalJeopardy: {
     category: "One Team, One Promise",
-    clue: "A potential product safety issue has been identified. Name five functions that may need to work together and explain what each contributes to protecting consumers.",
-    response: "Strong responses may include Quality / Food Safety: assess risk, guide holds, and decide product disposition. Supply Chain: trace product, manage inventory, and execute holds or withdrawals. Legal / Regulatory: confirm obligations, reporting expectations, and documentation. Communications / Customer Teams: align clear customer and stakeholder messaging. Consumer Affairs / Data / IT: provide complaint trends, records, and system access. Finance / Leadership: resource urgent action, make timely decisions, and assign accountability.",
-    hostAccepts: "Score as correct when the team names at least five relevant functions and gives a consumer-protection contribution for each. Prompt once if they name functions but do not explain contributions.",
+    clue: "A potential product safety issue has been identified. Name five function groups that may need to work together and explain what each contributes to protecting consumers.",
+    response: "Strong responses may include: Quality and Food Safety: assess risk, guide holds, and decide product disposition. Supply Chain and Operations: trace product, manage inventory, and execute holds or withdrawals. Legal and Regulatory: confirm obligations, reporting expectations, and documentation. Communications, Customer Teams, and Consumer Affairs: align clear customer, consumer, and stakeholder messaging and complaint intake. Data and Information Technology (IT): provide complaint trends, records, reporting, and system access. Finance and Leadership: resource urgent action, make timely decisions, and assign accountability.",
+    hostAccepts: "Score as correct when the team names at least five relevant functions or function groups and gives a consumer-protection contribution for each. Prompt once if they name functions but do not explain contributions. Use the rubric as guidance; the host's call is final for reasonable equivalents.",
     rubric: [
-      { label: "Full wager", text: "Five or more relevant functions plus a clear consumer-protection contribution for each." },
-      { label: "Half wager", text: "Three or four relevant functions with mostly clear contributions, or five functions with thin contribution detail." },
-      { label: "Miss", text: "Fewer than three functions, generic teamwork only, or no clear connection to consumer protection." }
+      { label: "Full wager", text: "Five or more relevant functions or function groups plus a clear consumer-protection contribution for each." },
+      { label: "Half wager", text: "Three or four relevant functions or function groups with mostly clear contributions, or five functions with thin contribution detail." },
+      { label: "Miss", text: "Fewer than three functions or function groups, generic teamwork only, or no clear connection to consumer protection." }
     ],
-    why: "Cross-functional action supports fast decisions, traceability, accurate records, customer/consumer communication, and clear accountability.",
+    why: "Cross-functional action supports fast decisions, traceability, accurate records, customer and consumer communication, and clear accountability.",
     tag: "Trust",
     bridge: "One team turns burden into solution when each function brings facts, speed, and accountability.",
     riskCard: { signal: "Potential product safety issue", risk: "Delayed or fragmented decision-making", action: "Coordinate facts, traceability, disposition, and communication" }

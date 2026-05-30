@@ -70,6 +70,14 @@
         return (value || `Team ${index + 1}`).slice(0, maxTeamNameLength);
       }
 
+      function finalDeltaForResult(result, wager) {
+        const safeWager = clampNumber(wager, 0, scoreLimit);
+        if (result === "correct") return safeWager;
+        if (result === "partial") return Math.floor(safeWager / 2);
+        if (result === "incorrect") return -safeWager;
+        return 0;
+      }
+
       function validClueIds() {
         const ids = new Set();
         data.categories.forEach((category, categoryIndex) => {
@@ -98,25 +106,65 @@
 
       function sanitizeFinalResult(result, wager) {
         const validResults = new Set(["correct", "partial", "incorrect", "none"]);
-        if (!result || !validResults.has(result.result)) return { label: "", delta: 0 };
-        const maxDelta = result.result === "partial" ? Math.floor(wager / 2) : wager;
-        if (result.result === "correct") return { label: "Full", delta: maxDelta };
-        if (result.result === "partial") return { label: "Half", delta: maxDelta };
-        if (result.result === "incorrect") return { label: "Miss", delta: -maxDelta };
-        return { label: result.label === "Auto-reviewed" ? "Auto-reviewed" : "", delta: 0 };
+        if (!result || !validResults.has(result.result)) return { result: "none", label: "", delta: 0 };
+        if (result.result === "correct") return { result: "correct", label: "Full", delta: finalDeltaForResult("correct", wager) };
+        if (result.result === "partial") return { result: "partial", label: "Half", delta: finalDeltaForResult("partial", wager) };
+        if (result.result === "incorrect") return { result: "incorrect", label: "Miss", delta: finalDeltaForResult("incorrect", wager) };
+        return { result: "none", label: result.label === "Auto-reviewed" ? "Auto-reviewed" : "", delta: 0 };
+      }
+
+      function getRawFinalWager(finalWagers, index) {
+        return Array.isArray(finalWagers) ? clampNumber(finalWagers[index], 0, scoreLimit) : 0;
+      }
+
+      function deriveFinalStartingScores(savedState, teams, rawFinalWagers, rawFinalResults) {
+        const finalLocked = Boolean(savedState?.finalWagersLocked || savedState?.finalResponseRevealed);
+        if (!finalLocked) return [];
+        if (Array.isArray(savedState?.finalStartingScores)) {
+          return teams.map((team, index) => clampNumber(
+            savedState.finalStartingScores[index],
+            0,
+            scoreLimit,
+            Math.max(0, team.score)
+          ));
+        }
+        return teams.map((team, index) => {
+          const rawWager = getRawFinalWager(rawFinalWagers, index);
+          const result = sanitizeFinalResult(rawFinalResults?.[index], rawWager);
+          const startingScore = team.score - finalDeltaForResult(result.result, rawWager);
+          if (!Number.isFinite(startingScore) || startingScore < 0 || startingScore > scoreLimit) {
+            return Math.max(0, team.score);
+          }
+          return clampNumber(startingScore, 0, scoreLimit, Math.max(0, team.score));
+        });
       }
 
       const teams = sanitizeTeams(saved?.teams);
       const validIds = validClueIds();
       const usedClues = new Set((Array.isArray(saved?.usedClues) ? saved.usedClues : []).filter((id) => validIds.has(id)));
+      const finalResponseRevealed = Boolean(saved?.finalResponseRevealed);
+      const finalLocked = Boolean(saved?.finalWagersLocked || finalResponseRevealed);
+      const rawFinalWagers = Array.isArray(saved?.finalWagers) ? saved.finalWagers.slice(0, teams.length) : [];
+      const rawFinalResults = Array.isArray(saved?.finalResults) ? saved.finalResults.slice(0, teams.length) : [];
+      const finalStartingScores = deriveFinalStartingScores(saved, teams, rawFinalWagers, rawFinalResults);
       const finalWagers = Array.from({ length: teams.length }, (_, index) => {
-        const maxWager = Math.max(0, teams[index].score);
-        return clampNumber(saved?.finalWagers?.[index], 0, maxWager);
+        const maxWager = finalLocked
+          ? clampNumber(finalStartingScores[index], 0, scoreLimit, Math.max(0, teams[index].score))
+          : Math.max(0, teams[index].score);
+        return clampNumber(rawFinalWagers[index], 0, maxWager);
       });
       const finalResults = Array.from({ length: teams.length }, (_, index) => sanitizeFinalResult(saved?.finalResults?.[index], finalWagers[index]));
       const finalScoredTeams = new Set((Array.isArray(saved?.finalScoredTeams) ? saved.finalScoredTeams : [])
         .map((index) => Number(index))
         .filter((index) => Number.isInteger(index) && index >= 0 && index < teams.length));
+      if (finalResponseRevealed) {
+        finalWagers.forEach((wager, index) => {
+          if (wager === 0) {
+            finalScoredTeams.add(index);
+            finalResults[index] = { result: "none", label: "Auto-reviewed", delta: 0 };
+          }
+        });
+      }
 
       function clueId(categoryIndex, clueIndex) {
         return `${categoryIndex}-${clueIndex}`;

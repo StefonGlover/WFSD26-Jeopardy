@@ -27,4 +27,4 @@ Then open `http://127.0.0.1:8765/index.html`. The root page redirects directly t
 
 - The removed campaign generator, digital quiz, QR vendor, and print packet routes are no longer part of this project.
 - Materials are for internal associate engagement. Confirm final examples with QSE/site leadership and brand/comms before use.
-- Avoid adding confidential formulas, KORE details, audit results, or real site layouts.
+- Use generic examples only. Do not add confidential formulas, KORE details, audit results, real site layouts, supplier names, active incidents, or unreleased business information.
