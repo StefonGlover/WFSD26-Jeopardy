@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "serve": "python3 -m http.server 4178",
-    "check": "node --check jeopardy-game.js && node --check jeopardy-data.js && node --check jeopardy-sound.js && node --check jeopardy-dialogs.js && git diff --check",
+    "check": "node --check jeopardy-game.js && node --check jeopardy-data.js && node --check state-utils.js && node --check jeopardy-sound.js && node --check jeopardy-dialogs.js && node scripts/validate-data.mjs && git diff --check",
     "test": "playwright test",
     "cache:bust": "node scripts/cache-bust.mjs"
   },

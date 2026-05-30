@@ -5,6 +5,7 @@ const htmlPath = "jeopardy-game.html";
 const versionFiles = [
   "jeopardy-game.css",
   "jeopardy-data.js",
+  "state-utils.js",
   "jeopardy-sound.js",
   "jeopardy-dialogs.js",
   "jeopardy-game.js"

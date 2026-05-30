@@ -1,15 +1,14 @@
 const builtInGameData = window.JeopardyData;
+const stateUtils = window.JeopardyStateUtils;
 let gameData = cloneData(builtInGameData);
 const SOUND_STORAGE_KEY = "jeopardy-sound-muted";
-const GAME_STATE_STORAGE_KEY = "wfsd-jeopardy-game-state-v1";
-const MIN_TEAM_COUNT = 2;
-const MAX_TEAM_COUNT = 5;
-const MAX_TEAM_NAME_LENGTH = 24;
-const SCORE_LIMIT = 999999;
+const GAME_STATE_STORAGE_KEY = stateUtils.GAME_STATE_STORAGE_KEY;
+const MIN_TEAM_COUNT = stateUtils.MIN_TEAM_COUNT;
+const MAX_TEAM_COUNT = stateUtils.MAX_TEAM_COUNT;
+const SCORE_LIMIT = stateUtils.SCORE_LIMIT;
 const DEFAULT_CATEGORY_IMAGE = "assets/generated/station-myth-fact.png";
 const DEFAULT_FINAL_IMAGE = "assets/generated/digital-screen.png";
-const SAFE_ASSET_PATTERN = /^assets\/generated\/[A-Za-z0-9._-]+\.(png|webp|svg)$/;
-const HISTORY_TYPES = new Set(["positive", "negative", "neutral", "partial"]);
+const SAFE_ASSET_PATTERN = stateUtils.SAFE_ASSET_PATTERN;
 const dialogReturnFocus = new WeakMap();
 let toastTimer = null;
 let setupDraftTeams = null;
@@ -133,27 +132,23 @@ const confirmAcceptButton = document.getElementById("confirmAcceptButton");
 const confirmCancelButton = document.getElementById("confirmCancelButton");
 
 function cloneData(value) {
-  return JSON.parse(JSON.stringify(value));
+  return stateUtils.cloneData(value);
 }
 
 function clampNumber(value, min, max, fallback = 0) {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return fallback;
-  return Math.min(max, Math.max(min, Math.trunc(number)));
+  return stateUtils.clampNumber(value, min, max, fallback);
 }
 
 function normalizeTeamName(name, index) {
-  const value = typeof name === "string" ? name.trim() : "";
-  return (value || `Team ${index + 1}`).slice(0, MAX_TEAM_NAME_LENGTH);
+  return stateUtils.normalizeTeamName(name, index);
 }
 
 function normalizeText(value, fallback = "", maxLength = 140) {
-  const text = typeof value === "string" ? value.trim().replace(/[<>]/g, "") : "";
-  return (text || fallback).slice(0, maxLength);
+  return stateUtils.normalizeText(value, fallback, maxLength);
 }
 
 function isPlainObject(value) {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+  return stateUtils.isPlainObject(value);
 }
 
 function clearElement(element) {
@@ -178,67 +173,31 @@ function textElement(tagName, text, className) {
 }
 
 function finalDeltaForResult(result, wager) {
-  const safeWager = clampNumber(wager, 0, SCORE_LIMIT);
-  if (result === "correct") return safeWager;
-  if (result === "partial") return Math.floor(safeWager / 2);
-  if (result === "incorrect") return -safeWager;
-  return 0;
+  return stateUtils.finalDeltaForResult(result, wager);
 }
 
 function sanitizeFinalResult(result) {
-  const validResults = new Set(["correct", "partial", "incorrect", "none"]);
-  if (!result || !validResults.has(result.result)) {
-    return { result: "none", label: "", delta: 0 };
-  }
-  const safeResult = result.result;
-  const safeLabels = {
-    correct: "Full",
-    partial: "Half",
-    incorrect: "Miss",
-    none: "Auto-reviewed"
-  };
-  return {
-    result: safeResult,
-    label: safeResult === "none" && result.label !== "Auto-reviewed" ? "" : safeLabels[safeResult],
-    delta: clampNumber(result?.delta, -SCORE_LIMIT, SCORE_LIMIT)
-  };
+  return stateUtils.sanitizeFinalResult(result);
 }
 
 function normalizeFinalResultForWager(result, wager) {
-  const safeResult = sanitizeFinalResult(result);
-  return {
-    ...safeResult,
-    delta: finalDeltaForResult(safeResult.result, wager)
-  };
+  return stateUtils.normalizeFinalResultForWager(result, wager);
 }
 
 function sanitizeHistoryEntry(entry) {
-  if (!isPlainObject(entry)) return null;
-  return {
-    title: normalizeText(entry.title, "Play", 80),
-    detail: normalizeText(entry.detail, "", 140),
-    delta: entry.delta === null || entry.delta === undefined ? null : clampNumber(entry.delta, -SCORE_LIMIT, SCORE_LIMIT),
-    type: HISTORY_TYPES.has(entry.type) ? entry.type : "neutral"
-  };
+  return stateUtils.sanitizeHistoryEntry(entry);
 }
 
 function sanitizeActionHistory(history) {
-  if (!Array.isArray(history)) return [];
-  return history.map(sanitizeHistoryEntry).filter(Boolean).slice(0, 5);
+  return stateUtils.sanitizeActionHistory(history);
 }
 
 function sanitizeUndoSnapshot(undoSnapshot) {
-  if (!isPlainObject(undoSnapshot) || !isPlainObject(undoSnapshot.snapshot)) return null;
-  const snapshot = cloneData(undoSnapshot.snapshot);
-  snapshot.undoSnapshot = null;
-  return {
-    label: normalizeText(undoSnapshot.label, "last action", 80),
-    snapshot
-  };
+  return stateUtils.sanitizeUndoSnapshot(undoSnapshot);
 }
 
 function clueId(categoryIndex, clueIndex) {
-  return `${categoryIndex}-${clueIndex}`;
+  return stateUtils.clueId(categoryIndex, clueIndex);
 }
 
 function getTotalClues() {
@@ -336,26 +295,11 @@ function restoreCurrentClue(savedClue) {
 }
 
 function sanitizeUsedClues(usedClues) {
-  if (!Array.isArray(usedClues)) return new Set();
-  const validIds = new Set();
-  gameData.categories.forEach((category, categoryIndex) => {
-    category.clues.forEach((clue, clueIndex) => {
-      validIds.add(clueId(categoryIndex, clueIndex));
-    });
-  });
-  return new Set(usedClues.filter((id) => validIds.has(id)));
+  return stateUtils.sanitizeUsedClues(gameData, usedClues);
 }
 
 function sanitizeTeams(teams) {
-  const sourceTeams = Array.isArray(teams) && teams.length ? teams : state.teams;
-  const boundedTeams = sourceTeams.slice(0, MAX_TEAM_COUNT).map((team, index) => ({
-    name: normalizeTeamName(team?.name, index),
-    score: clampNumber(team?.score, -SCORE_LIMIT, SCORE_LIMIT)
-  }));
-  while (boundedTeams.length < MIN_TEAM_COUNT) {
-    boundedTeams.push({ name: `Team ${boundedTeams.length + 1}`, score: 0 });
-  }
-  return boundedTeams;
+  return stateUtils.sanitizeTeams(teams, state.teams);
 }
 
 function normalizeFinalState() {
@@ -378,30 +322,11 @@ function normalizeFinalState() {
 }
 
 function getRawFinalWager(finalWagers, index) {
-  return Array.isArray(finalWagers) ? clampNumber(finalWagers[index], 0, SCORE_LIMIT) : 0;
+  return stateUtils.getRawFinalWager(finalWagers, index);
 }
 
 function deriveFinalStartingScores(snapshot, teams, rawFinalWagers, rawFinalResults) {
-  if (!(snapshot?.finalWagersLocked || snapshot?.finalResponseRevealed)) {
-    return [];
-  }
-  if (Array.isArray(snapshot.finalStartingScores)) {
-    return teams.map((team, index) => clampNumber(
-      snapshot.finalStartingScores[index],
-      0,
-      SCORE_LIMIT,
-      Math.max(0, team.score)
-    ));
-  }
-  return teams.map((team, index) => {
-    const rawWager = getRawFinalWager(rawFinalWagers, index);
-    const result = sanitizeFinalResult(rawFinalResults?.[index]);
-    const startingScore = team.score - finalDeltaForResult(result.result, rawWager);
-    if (!Number.isFinite(startingScore) || startingScore < 0 || startingScore > SCORE_LIMIT) {
-      return Math.max(0, team.score);
-    }
-    return clampNumber(startingScore, 0, SCORE_LIMIT, Math.max(0, team.score));
-  });
+  return stateUtils.deriveFinalStartingScores(snapshot, teams, rawFinalWagers, rawFinalResults);
 }
 
 function restoreState(snapshot, { reopenDialogs = false } = {}) {
