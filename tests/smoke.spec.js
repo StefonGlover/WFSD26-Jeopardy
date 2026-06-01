@@ -31,24 +31,76 @@ async function expectVisibleInViewport(page, locator) {
   expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
 }
 
+function scoreSheetSnapshotState() {
+  return {
+    version: 1,
+    teams: [
+      { name: "QA", score: 150 },
+      { name: "Supply", score: -50 },
+      { name: "Ops", score: 0 }
+    ],
+    activeTeam: 0,
+    usedClues: ["0-0", "1-2", "2-3", "4-4"],
+    seenCategoryPrompts: [],
+    actionHistory: [],
+    finalWagers: [50, 0, 0],
+    finalWagersLocked: true,
+    finalResponseRevealed: true,
+    finalScoredTeams: [0, 1, 2],
+    finalResults: [
+      { result: "partial", label: "Half", delta: 25 },
+      { result: "none", label: "Auto-reviewed", delta: 0 },
+      { result: "none", label: "Auto-reviewed", delta: 0 }
+    ],
+    finalComplete: false,
+    mobileCategoryIndex: 0,
+    currentClue: null,
+    openDialog: null
+  };
+}
+
+async function loadSeededScoreSheet(page) {
+  await page.goto("/host-score-sheet.html?test=visual-snapshot");
+  await page.evaluate(({ storageKey, state }) => {
+    localStorage.clear();
+    localStorage.setItem(storageKey, JSON.stringify(state));
+  }, {
+    storageKey: GAME_STATE_STORAGE_KEY,
+    state: scoreSheetSnapshotState()
+  });
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Host Score Sheet" })).toBeVisible();
+}
+
 test("root route opens directly to the gameboard", async ({ page }) => {
   await page.goto("/index.html");
   await expect(page).toHaveURL(/jeopardy-game\.html$/);
   await expect(page.getByRole("heading", { name: "Food Safety Face-Off" })).toBeVisible();
 });
 
-test("gameboard exposes host score sheet from footer", async ({ page, context }) => {
+test("gameboard exposes host support links from footer", async ({ page, context }) => {
   await page.goto("/jeopardy-game.html?test=score-sheet-footer");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await expect(page.getByRole("button", { name: "Host Notes" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Next Team" })).toHaveCount(0);
+  const quickStartLink = page.getByRole("link", { name: "Quick Start" });
+  await expect(quickStartLink).toBeVisible();
+  await expect(quickStartLink).toHaveAttribute("href", "host-quick-start.html");
+  await expect(quickStartLink).toHaveAttribute("target", "_blank");
   const scoreSheetLink = page.getByRole("link", { name: "Score Sheet" });
   await expect(scoreSheetLink).toBeVisible();
   await expect(scoreSheetLink).toHaveAttribute("href", "host-score-sheet.html");
   await expect(scoreSheetLink).toHaveAttribute("target", "_blank");
 
-  const newPagePromise = context.waitForEvent("page");
+  let newPagePromise = context.waitForEvent("page");
+  await quickStartLink.click();
+  const quickStartPage = await newPagePromise;
+  await expect(quickStartPage).toHaveURL(/host-quick-start\.html$/);
+  await expect(quickStartPage.getByRole("heading", { name: "Host Quick Start" })).toBeVisible();
+  await quickStartPage.close();
+
+  newPagePromise = context.waitForEvent("page");
   await scoreSheetLink.click();
   const scoreSheetPage = await newPagePromise;
   await expect(scoreSheetPage).toHaveURL(/host-score-sheet\.html$/);
@@ -284,6 +336,25 @@ test("host note updates after clue reveal", async ({ page }) => {
   await expect(page.locator("#hostNote")).toContainText("Reveal when ready");
   await page.getByRole("button", { name: "Reveal Response" }).click();
   await expect(page.locator("#hostNote")).toContainText("Score the selected team");
+});
+
+test("previewed clue can close without creating saved progress or consuming category intro", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=preview-close");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "Food Safety Basics for 100 points" }).click();
+  await expect(page.locator("#clueStinger")).toBeVisible();
+  await expect(page.locator("#clueStinger")).toContainText("Every check protects someone.");
+  await page.getByRole("button", { name: "Back to board" }).click();
+  await expect(page.locator("#clueDialog")).not.toBeVisible();
+  await expect(page.locator("#progressStatus")).toHaveText("0/25 clues");
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Resume Game" })).toHaveCount(0);
+  await expect(page.locator("#progressStatus")).toHaveText("0/25 clues");
+  await page.getByRole("button", { name: "Food Safety Basics for 100 points" }).click();
+  await expect(page.locator("#clueStinger")).toBeVisible();
+  await expect(page.locator("#clueStinger")).toContainText("Every check protects someone.");
 });
 
 test("revealed clue Escape and close button require explicit no-score confirmation", async ({ page }) => {
@@ -806,6 +877,49 @@ test("primary dialogs remain usable across target viewport families", async ({ p
   }
 });
 
+test("keyboard navigation reaches controls, traps dialogs, and restores focus", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=keyboard-flow");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Show rules" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Sound is off. Turn sound on." })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Teams" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { name: "Build Teams" })).toBeVisible();
+  await expect(page.locator("#teamFields input").first()).toBeFocused();
+
+  await page.getByRole("button", { name: "Close Team Setup" }).focus();
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByRole("button", { name: "Save Teams" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: "Teams" })).toBeFocused();
+});
+
+test.describe("reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("score changes do not run score-card animations", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/jeopardy-game.html?test=reduced-motion-score");
+    await page.evaluate(() => localStorage.clear());
+    await page.reload();
+    expect(await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(true);
+    await page.getByRole("button", { name: "Food Safety Basics for 100 points" }).click();
+    await page.getByRole("button", { name: "Reveal Response" }).click();
+    await page.getByRole("button", { name: "Correct +100" }).click();
+    await expect(page.locator(".team-card.active")).toContainText("Team 1");
+    await expect(page.locator(".team-card.active")).toHaveClass(/score-up/);
+    const animationName = await page.locator(".team-card.active").evaluate((element) => (
+      getComputedStyle(element).animationName
+    ));
+    expect(animationName).toBe("none");
+  });
+});
+
 test("reset cancel preserves state and confirm clears play while keeping team names", async ({ page }) => {
   await page.goto("/jeopardy-game.html?test=reset-behavior");
   await page.evaluate(() => localStorage.clear());
@@ -852,7 +966,27 @@ test("host score sheet route renders print controls", async ({ page }) => {
   await page.goto("/host-score-sheet.html");
   await expect(page.getByRole("heading", { name: "Host Score Sheet" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Print Score Sheet" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Quick Start" })).toHaveAttribute("href", "host-quick-start.html");
   await expect(page.getByRole("table")).toBeVisible();
+});
+
+test("host quick start route renders printable facilitator guide", async ({ page }) => {
+  const viewports = [
+    { width: 390, height: 844 },
+    { width: 1075, height: 908 }
+  ];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await page.goto(`/host-quick-start.html?test=quick-start-${viewport.width}`);
+    await expect(page.getByRole("heading", { name: "Host Quick Start" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Print / Save PDF" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Score Sheet" })).toHaveAttribute("href", "host-score-sheet.html");
+    await expect(page.getByRole("heading", { name: "Scoring Rules" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Final Jeopardy Flow" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Debrief Cue" })).toBeVisible();
+    await expectNoPageOverflow(page);
+  }
 });
 
 test("host score sheet reflects saved scores, used clues, wagers, and final results", async ({ page }) => {
@@ -893,6 +1027,34 @@ test("host score sheet reflects saved scores, used clues, wagers, and final resu
   await expect(page.getByText("Wager: $50")).toBeVisible();
   await expect(page.getByText("Result: Half +25")).toBeVisible();
   await expect(page.getByText("Result: Auto-reviewed")).toHaveCount(2);
+});
+
+test("host score sheet desktop visual snapshot", async ({ page }) => {
+  await page.setViewportSize({ width: 1100, height: 900 });
+  await loadSeededScoreSheet(page);
+  await expect(page).toHaveScreenshot("host-score-sheet-desktop.png", {
+    animations: "disabled",
+    fullPage: true
+  });
+});
+
+test("host score sheet mobile visual snapshot", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await loadSeededScoreSheet(page);
+  await expect(page).toHaveScreenshot("host-score-sheet-mobile.png", {
+    animations: "disabled",
+    fullPage: true
+  });
+});
+
+test("host score sheet print visual snapshot", async ({ page }) => {
+  await page.setViewportSize({ width: 1056, height: 816 });
+  await page.emulateMedia({ media: "print" });
+  await loadSeededScoreSheet(page);
+  await expect(page).toHaveScreenshot("host-score-sheet-print.png", {
+    animations: "disabled",
+    fullPage: true
+  });
 });
 
 test("host score sheet ignores stale final results before response reveal", async ({ page }) => {

@@ -475,6 +475,28 @@ function closeDialog(dialog) {
   restoreDialogFocus(dialog);
 }
 
+function currentClueIsUnplayedPreview() {
+  return Boolean(
+    state.currentClue &&
+    !state.currentClue.revealed &&
+    !state.currentClue.resolved &&
+    !state.currentClue.noScore &&
+    state.currentClue.scoredTeams.size === 0
+  );
+}
+
+function clearUnplayedCurrentClue() {
+  if (!currentClueIsUnplayedPreview()) return false;
+  state.currentClue = null;
+  return true;
+}
+
+function markCurrentCategoryPromptSeen() {
+  if (state.currentClue?.category?.id) {
+    state.seenCategoryPrompts.add(state.currentClue.category.id);
+  }
+}
+
 function getOpenDialogName() {
   if (isDialogOpen(clueDialog)) return "clue";
   if (isDialogOpen(finalDialog)) return "final";
@@ -534,6 +556,7 @@ async function closeClueFromHost() {
     noScore();
     return;
   }
+  clearUnplayedCurrentClue();
   closeDialog(clueDialog);
   saveState();
 }
@@ -1170,7 +1193,6 @@ function openClue(categoryIndex, itemIndex) {
   clueHostDetailsOpen = getDefaultHostDetailsOpen();
 
   const showCategoryPrompt = !state.seenCategoryPrompts.has(category.id);
-  state.seenCategoryPrompts.add(category.id);
   renderCurrentClueView();
   renderClueStinger(category, showCategoryPrompt);
   correctButton.disabled = true;
@@ -1186,6 +1208,7 @@ function revealClue() {
   playSound("reveal");
   responseBlock.hidden = false;
   state.currentClue.revealed = true;
+  markCurrentCategoryPromptSeen();
   clueHostDetailsOpen = getDefaultHostDetailsOpen();
   revealButton.disabled = true;
   updateClueHostDetailsDisclosure();
@@ -1993,6 +2016,9 @@ function bindEvents() {
     dialog.addEventListener("close", () => {
       if (dialog === setupDialog) {
         setupDraftTeams = null;
+      }
+      if (dialog === clueDialog) {
+        clearUnplayedCurrentClue();
       }
       restoreDialogFocus(dialog);
       if (dialog !== resumeDialog && dialog !== confirmDialog) {

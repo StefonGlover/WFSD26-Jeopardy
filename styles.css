@@ -1,5 +1,5 @@
 :root {
-  --coke-red: #f40000;
+  --coke-red: #d70000;
   --black: #070707;
   --ink: #151515;
   --white: #ffffff;
@@ -25,6 +25,10 @@ body {
 
 button {
   font: inherit;
+}
+
+a {
+  color: inherit;
 }
 
 h1,
@@ -55,6 +59,20 @@ p {
   cursor: pointer;
 }
 
+.secondary-button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--coke-red);
+  border-radius: 999px;
+  background: var(--white);
+  color: var(--coke-red);
+  padding: 0 18px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
 .score-sheet-page {
   min-height: 100vh;
   background: #f7f1e8;
@@ -78,6 +96,13 @@ p {
   gap: 18px;
   border-bottom: 4px solid var(--coke-red);
   padding-bottom: 18px;
+}
+
+.support-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
 }
 
 .score-sheet-header h1 {
@@ -166,6 +191,59 @@ p {
   color: #8a0000;
 }
 
+.quick-start-sheet {
+  max-width: 960px;
+}
+
+.quick-start-hero {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.quick-start-hero article,
+.quick-rule-grid article,
+.quick-closeout {
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.quick-start-hero span,
+.quick-rule-grid strong {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--coke-red);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.quick-checklist,
+.quick-flow-list {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.quick-checklist li,
+.quick-flow-list li {
+  margin-bottom: 7px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.quick-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.quick-rule-grid p,
+.quick-closeout p {
+  margin-bottom: 0;
+  line-height: 1.35;
+}
+
 @media (max-width: 760px) {
   .score-sheet-page {
     padding: 12px;
@@ -179,9 +257,15 @@ p {
     display: grid;
   }
 
+  .support-actions {
+    justify-content: flex-start;
+  }
+
   .score-team-grid,
   .final-score-grid,
-  .score-note-grid {
+  .score-note-grid,
+  .quick-start-hero,
+  .quick-rule-grid {
     grid-template-columns: 1fr;
   }
 
@@ -226,8 +310,49 @@ p {
     break-inside: avoid;
   }
 
+  .quick-start-page .score-sheet {
+    min-height: 10in;
+  }
+
+  .quick-start-page .score-sheet-header h1 {
+    font-size: 42px;
+  }
+
+  .quick-start-page .score-sheet-section,
+  .quick-start-hero {
+    margin-top: 16px;
+  }
+
+  .quick-rule-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quick-start-hero article,
+  .quick-rule-grid article,
+  .quick-closeout {
+    padding: 10px;
+  }
+
+  .quick-checklist li,
+  .quick-flow-list li,
+  .quick-rule-grid p,
+  .quick-closeout p {
+    font-size: 12px;
+    line-height: 1.25;
+  }
+
   @page {
     size: letter landscape;
     margin: 0.25in;
+  }
+
+  .quick-start-page {
+    padding: 0;
+    page: quick-start;
+  }
+
+  @page quick-start {
+    size: letter portrait;
+    margin: 0.35in;
   }
 }

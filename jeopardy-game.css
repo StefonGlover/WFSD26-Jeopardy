@@ -1655,6 +1655,8 @@ dialog::backdrop {
   .winner-title-celebrate,
   .final-score-list div,
   .clue-stinger,
+  .team-card.score-up,
+  .team-card.score-down,
   .team-card.score-celebrate::after {
     animation: none;
   }
@@ -1664,7 +1666,9 @@ dialog::backdrop {
     text-shadow: 0 0 18px rgba(255, 209, 92, 0.34);
   }
 
-  .final-score-list div {
+  .final-score-list div,
+  .team-card.score-up,
+  .team-card.score-down {
     opacity: 1;
     transform: none;
   }
