@@ -108,9 +108,6 @@ const finalButton = document.getElementById("finalButton");
 const finalPrimaryButton = document.getElementById("finalPrimaryButton");
 const finalUndoButton = document.getElementById("finalUndoButton");
 const finalPanel = finalDialog.querySelector(".final-panel");
-const hostNotesDialog = document.getElementById("hostNotesDialog");
-const hostScriptList = document.getElementById("hostScriptList");
-const recentPlayList = document.getElementById("recentPlayList");
 const rulesDialog = document.getElementById("rulesDialog");
 const rulesList = document.getElementById("rulesList");
 const rulesThemeLens = document.getElementById("rulesThemeLens");
@@ -237,7 +234,8 @@ function serializeCurrentClue() {
     noScore: Boolean(state.currentClue.noScore),
     stealOpen: Boolean(state.currentClue.stealOpen),
     resolved: Boolean(state.currentClue.resolved),
-    revealed: Boolean(state.currentClue.revealed)
+    revealed: Boolean(state.currentClue.revealed),
+    categoryPromptWasNew: Boolean(state.currentClue.categoryPromptWasNew)
   };
 }
 
@@ -293,6 +291,7 @@ function restoreCurrentClue(savedClue) {
     stealOpen: Boolean(savedClue.stealOpen),
     resolved: Boolean(savedClue.resolved || savedClue.noScore),
     revealed: Boolean(savedClue.revealed),
+    categoryPromptWasNew: Boolean(savedClue.categoryPromptWasNew),
     selectedTeam: sanitizeTeamIndex(savedClue.selectedTeam, state.activeTeam)
   };
   if (state.currentClue.stealOpen && !state.currentClue.resolved && state.currentClue.scoredTeams.has(state.currentClue.selectedTeam)) {
@@ -445,14 +444,50 @@ function rememberDialogFocus(dialog, returnFocusElement = document.activeElement
 
 function restoreDialogFocus(dialog) {
   const returnFocusElement = dialogReturnFocus.get(dialog);
+  const focusIfReady = (element) => {
+    if (document.contains(element) && !element.disabled) {
+      element.focus();
+    }
+  };
   if (
     returnFocusElement instanceof HTMLElement &&
     document.contains(returnFocusElement) &&
     !returnFocusElement.disabled
   ) {
     returnFocusElement.focus();
+  } else {
+    const fallbackElement = getDialogFallbackFocus(dialog, returnFocusElement);
+    if (fallbackElement) {
+      focusIfReady(fallbackElement);
+      window.setTimeout(() => focusIfReady(fallbackElement), 0);
+      window.setTimeout(() => focusIfReady(fallbackElement), 50);
+    }
   }
   dialogReturnFocus.delete(dialog);
+}
+
+function getDialogFallbackFocus(dialog, returnFocusElement) {
+  if (dialog === clueDialog) {
+    const activeBoard = mobileBoardQuery?.matches ? mobileBoard : gameBoard;
+    const categoryIndex = Number(returnFocusElement?.dataset?.categoryIndex);
+    const clueIndex = Number(returnFocusElement?.dataset?.clueIndex);
+    if (Number.isInteger(categoryIndex) && Number.isInteger(clueIndex)) {
+      for (let nextClueIndex = clueIndex + 1; nextClueIndex < 5; nextClueIndex += 1) {
+        const nextCategoryClue = activeBoard?.querySelector(
+          `button[data-category-index="${categoryIndex}"][data-clue-index="${nextClueIndex}"]:not(:disabled)`
+        );
+        if (nextCategoryClue instanceof HTMLElement) return nextCategoryClue;
+      }
+    }
+    const nextClue = activeBoard?.querySelector("button:not(:disabled)");
+    if (nextClue instanceof HTMLElement) return nextClue;
+    if (undoButton && !undoButton.disabled) return undoButton;
+    return finalButton;
+  }
+  if (dialog === finalDialog || dialog === endDialog) return finalButton;
+  if (dialog === setupDialog) return setupButton;
+  if (dialog === rulesDialog) return rulesButton;
+  return null;
 }
 
 function showDialog(dialog, returnFocusElement = document.activeElement, { persist = true } = {}) {
@@ -583,7 +618,6 @@ function renderState() {
   renderScoreboard();
   renderTeamSelect();
   renderBoard();
-  renderHostNotes();
   updateUndoButton();
   updateBoardStatus();
   if (isDialogOpen(finalDialog)) {
@@ -689,6 +723,15 @@ function captureUndo(label, { includeTransient = true } = {}) {
   updateUndoButton();
 }
 
+function captureClueResolutionUndo(label) {
+  captureUndo(label, { includeTransient: false });
+  const categoryId = state.currentClue?.category?.id;
+  if (categoryId && state.currentClue.categoryPromptWasNew && state.undoSnapshot?.snapshot) {
+    state.undoSnapshot.snapshot.seenCategoryPrompts = state.undoSnapshot.snapshot.seenCategoryPrompts
+      .filter((id) => id !== categoryId);
+  }
+}
+
 function relabelUndo(label) {
   if (!state.undoSnapshot) return;
   state.undoSnapshot.label = label;
@@ -713,7 +756,6 @@ function recordHistory(entry) {
     type: entry.type || "neutral"
   });
   state.actionHistory = state.actionHistory.slice(0, 5);
-  renderRecentPlays();
 }
 
 function showToast(message, type = "neutral") {
@@ -985,6 +1027,8 @@ function renderBoard() {
       tile.className = `clue-tile${state.usedClues.has(id) ? " used" : ""}`;
       tile.textContent = clue.value;
       tile.disabled = state.usedClues.has(id) || state.finalComplete;
+      tile.dataset.categoryIndex = String(categoryIndex);
+      tile.dataset.clueIndex = String(clueIndex);
       tile.style.setProperty("--category-accent", category.visual?.color || "var(--coke-red)");
       tile.setAttribute("aria-label", `${category.name} for ${clue.value} points`);
       tile.addEventListener("click", () => openClue(categoryIndex, clueIndex));
@@ -1030,6 +1074,8 @@ function renderMobileBoard() {
     tile.type = "button";
     tile.className = `mobile-clue-tile${state.usedClues.has(id) ? " used" : ""}`;
     tile.disabled = state.usedClues.has(id) || state.finalComplete;
+    tile.dataset.categoryIndex = String(state.mobileCategoryIndex);
+    tile.dataset.clueIndex = String(clueIndex);
     tile.append(
       textElement("strong", clue.value),
       textElement("span", state.usedClues.has(id) ? "Used" : "Available")
@@ -1179,6 +1225,7 @@ function openClue(categoryIndex, itemIndex) {
   const category = gameData.categories[categoryIndex];
   const clue = category.clues[itemIndex];
   const id = clueId(categoryIndex, itemIndex);
+  const showCategoryPrompt = !state.seenCategoryPrompts.has(category.id);
   state.currentClue = {
     id,
     category,
@@ -1188,11 +1235,11 @@ function openClue(categoryIndex, itemIndex) {
     stealOpen: false,
     resolved: false,
     revealed: false,
+    categoryPromptWasNew: showCategoryPrompt,
     selectedTeam: state.activeTeam
   };
   clueHostDetailsOpen = getDefaultHostDetailsOpen();
 
-  const showCategoryPrompt = !state.seenCategoryPrompts.has(category.id);
   renderCurrentClueView();
   renderClueStinger(category, showCategoryPrompt);
   correctButton.disabled = true;
@@ -1263,7 +1310,7 @@ function applyScore(multiplier) {
   const value = currentClueScoreValue();
   const delta = value * multiplier;
   if (!state.currentClue.scoredTeams.size || !state.undoSnapshot) {
-    captureUndo(`${team.name} ${formatDelta(delta)}`, { includeTransient: false });
+    captureClueResolutionUndo(`${team.name} ${formatDelta(delta)}`);
   } else if (wasStealAttempt) {
     relabelUndo(`${state.currentClue.category.name} ${state.currentClue.clue.value} scoring`);
   }
@@ -1332,7 +1379,7 @@ function noScore() {
     saveState();
     return;
   }
-  captureUndo(label, { includeTransient: false });
+  captureClueResolutionUndo(label);
   state.currentClue.noScore = true;
   state.currentClue.resolved = true;
   markCurrentUsed();
@@ -1420,7 +1467,6 @@ function renderFreshGame({ persist = true } = {}) {
   renderScoreboard();
   renderTeamSelect();
   renderBoard();
-  renderHostNotes();
   updateUndoButton();
   updateBoardStatus("Game reset. Choose a team, then choose a clue.");
   closeGameDialogs();
@@ -1793,32 +1839,6 @@ function renderRules() {
   });
 }
 
-function renderHostNotes() {
-  clearElement(hostScriptList);
-  gameData.hostNotes.forEach((note) => {
-    const article = document.createElement("article");
-    article.className = "host-note-card";
-    article.append(textElement("span", note.title), textElement("p", note.text));
-    hostScriptList.appendChild(article);
-  });
-  renderRecentPlays();
-}
-
-function renderRecentPlays() {
-  if (!recentPlayList) return;
-  if (!state.actionHistory.length) {
-    recentPlayList.replaceChildren(textElement("p", "No plays yet."));
-    return;
-  }
-  clearElement(recentPlayList);
-  state.actionHistory.forEach((entry) => {
-    const article = document.createElement("article");
-    article.className = entry.type || "neutral";
-    article.append(textElement("span", entry.title), textElement("p", entry.detail));
-    recentPlayList.appendChild(article);
-  });
-}
-
 function renderClueStinger(category, showCategoryPrompt) {
   clueStinger.hidden = !showCategoryPrompt;
   if (clueStinger.hidden) return;
@@ -1906,7 +1926,6 @@ function getActiveDialog() {
     endDialog,
     finalDialog,
     clueDialog,
-    hostNotesDialog,
     rulesDialog,
     setupDialog
   ].find(isDialogOpen) || null;
@@ -1941,7 +1960,6 @@ function handleKeyboardShortcuts(event) {
 
   const nonGameDialogOpen = isDialogOpen(setupDialog) ||
     isDialogOpen(rulesDialog) ||
-    isDialogOpen(hostNotesDialog) ||
     isDialogOpen(resumeDialog) ||
     isDialogOpen(confirmDialog) ||
     isDialogOpen(endDialog);
@@ -1985,8 +2003,6 @@ function bindEvents() {
   document.getElementById("closeSetupButton").addEventListener("click", () => closeDialog(setupDialog));
   document.getElementById("rulesButton").addEventListener("click", (event) => showDialog(rulesDialog, event.currentTarget));
   document.getElementById("closeRulesButton").addEventListener("click", () => closeDialog(rulesDialog));
-  document.getElementById("hostNotesButton").addEventListener("click", (event) => showDialog(hostNotesDialog, event.currentTarget));
-  document.getElementById("closeHostNotesIcon").addEventListener("click", () => closeDialog(hostNotesDialog));
   undoButton.addEventListener("click", undoLastAction);
   document.getElementById("resetButton").addEventListener("click", resetGame);
   finalButton.addEventListener("click", () => openFinal());
@@ -2012,7 +2028,7 @@ function bindEvents() {
     event.preventDefault();
     resolveConfirm(false);
   });
-  [setupDialog, clueDialog, finalDialog, hostNotesDialog, rulesDialog, endDialog, resumeDialog, confirmDialog].forEach((dialog) => {
+  [setupDialog, clueDialog, finalDialog, rulesDialog, endDialog, resumeDialog, confirmDialog].forEach((dialog) => {
     dialog.addEventListener("close", () => {
       if (dialog === setupDialog) {
         setupDraftTeams = null;

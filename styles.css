@@ -158,6 +158,14 @@ p {
   table-layout: fixed;
 }
 
+.score-board-table caption {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 900;
+  text-align: left;
+  text-transform: uppercase;
+}
+
 .score-board-table th,
 .score-board-table td {
   border: 2px solid var(--line);
@@ -204,6 +212,7 @@ p {
 
 .quick-start-hero article,
 .quick-rule-grid article,
+.quick-note-grid article,
 .quick-closeout {
   border: 2px solid var(--line);
   border-radius: 8px;
@@ -211,7 +220,8 @@ p {
 }
 
 .quick-start-hero span,
-.quick-rule-grid strong {
+.quick-rule-grid strong,
+.quick-note-grid strong {
   display: block;
   margin-bottom: 10px;
   color: var(--coke-red);
@@ -238,7 +248,14 @@ p {
   gap: 12px;
 }
 
+.quick-note-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .quick-rule-grid p,
+.quick-note-grid p,
 .quick-closeout p {
   margin-bottom: 0;
   line-height: 1.35;
@@ -265,7 +282,8 @@ p {
   .final-score-grid,
   .score-note-grid,
   .quick-start-hero,
-  .quick-rule-grid {
+  .quick-rule-grid,
+  .quick-note-grid {
     grid-template-columns: 1fr;
   }
 
@@ -306,8 +324,87 @@ p {
     padding: 0;
   }
 
+  .score-sheet-header {
+    padding-bottom: 8px;
+  }
+
+  .score-sheet-header h1 {
+    margin-bottom: 4px;
+    font-size: 34px;
+  }
+
+  .score-sheet-header p {
+    margin-bottom: 0;
+    font-size: 12px;
+  }
+
   .score-sheet-section {
+    margin-top: 8px;
     break-inside: avoid;
+  }
+
+  .score-sheet-section h2 {
+    margin-bottom: 5px;
+    font-size: 15px;
+  }
+
+  .score-team-grid,
+  .final-score-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .score-note-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .score-team-grid article,
+  .final-score-grid article,
+  .score-note-grid article {
+    min-height: 52px;
+    border-width: 1px;
+    padding: 6px;
+  }
+
+  .score-team-grid strong,
+  .final-score-grid strong,
+  .score-note-grid span {
+    margin-bottom: 4px;
+    font-size: 10px;
+  }
+
+  .score-team-grid p,
+  .final-score-grid p,
+  .score-note-grid p {
+    margin-bottom: 2px;
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .score-board-table caption {
+    margin-bottom: 4px;
+    font-size: 9px;
+  }
+
+  .score-board-table th,
+  .score-board-table td {
+    border-width: 1px;
+    padding: 4px;
+  }
+
+  .score-board-table th {
+    font-size: 9px;
+  }
+
+  .score-board-table td {
+    height: 34px;
+    font-size: 15px;
+  }
+
+  .score-board-table td span {
+    margin-top: 1px;
+    font-size: 7px;
   }
 
   .quick-start-page .score-sheet {
@@ -327,8 +424,13 @@ p {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .quick-note-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .quick-start-hero article,
   .quick-rule-grid article,
+  .quick-note-grid article,
   .quick-closeout {
     padding: 10px;
   }
@@ -336,6 +438,7 @@ p {
   .quick-checklist li,
   .quick-flow-list li,
   .quick-rule-grid p,
+  .quick-note-grid p,
   .quick-closeout p {
     font-size: 12px;
     line-height: 1.25;

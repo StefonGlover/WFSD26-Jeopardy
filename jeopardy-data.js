@@ -78,10 +78,10 @@ window.JeopardyData = {
         },
         {
           value: 400,
-          clue: "A product question comes in and the team needs to know where materials came from and where product went. What capability is this?",
-          response: "Traceability.",
-          hostAccepts: "Accept traceability, track and trace, one-up/one-down trace, or the ability to trace source, movement, and destination.",
-          why: "Traceability supports faster holds, investigations, withdrawals, and product disposition decisions.",
+          clue: "A product question comes in and the team needs source, lot or batch, destination, and status information before deciding what to hold or release. What capability is this?",
+          response: "Traceability with actionable source, movement, destination, and status records.",
+          hostAccepts: "Accept traceability or track and trace when the answer includes at least two usable decision inputs such as source, lot or batch, destination, status, quantity, hold/release decision, or disposition.",
+          why: "Traceability is strongest when records do more than name a capability; they support faster holds, investigations, withdrawals, and disposition decisions.",
           tag: "Traceability",
           bridge: "Traceability moves potential burden into a focused, controlled response.",
           riskCard: { signal: "Product or material question", risk: "Slow investigation or disposition", action: "Trace source, movement, and status quickly" }
@@ -137,13 +137,13 @@ window.JeopardyData = {
         },
         {
           value: 400,
-          clue: "A chemical container is unlabeled near product-contact tools. Name the hazard type and one control.",
-          response: "Chemical hazard; label, segregate, store correctly, and verify.",
-          hostAccepts: "Accept chemical hazard plus one strong control: identify/label, segregate, remove from area, store correctly, escalate, or verify disposition.",
-          why: "Unidentified chemicals near product-contact items create a preventable contamination risk.",
+          clue: "A chemical container is unlabeled near product-contact tools during startup. Name the hazard type and the immediate containment steps before tools or product can be released.",
+          response: "Chemical hazard; stop use, remove or segregate the chemical and affected tools, escalate, identify the material, and verify disposition before release.",
+          hostAccepts: "Correct answers should name chemical hazard plus containment and release logic: stop/block use, remove or segregate, protect or assess tools/product, escalate to the right owner, identify the material, and verify disposition before reuse or restart.",
+          why: "Unidentified chemicals near product-contact items require containment first, then evidence-based release.",
           tag: "HACCP",
-          bridge: "A clear control turns a hazard from burden into managed risk.",
-          riskCard: { signal: "Unlabeled chemical container", risk: "Chemical contamination", action: "Label, segregate, store, and verify" }
+          bridge: "A clear containment sequence turns a hazard from burden into managed risk.",
+          riskCard: { signal: "Unlabeled chemical container", risk: "Chemical contamination", action: "Contain, identify, escalate, and verify release" }
         },
         {
           value: 500,
@@ -196,13 +196,13 @@ window.JeopardyData = {
         },
         {
           value: 400,
-          clue: "Two markets report similar quality signals, but one involves a higher-risk ingredient. What should guide where the team acts first?",
-          response: "Risk ranking or risk-based prioritization.",
-          hostAccepts: "Accept risk ranking, risk-based prioritization, severity/likelihood assessment, or focusing first where consumer impact could be greatest.",
-          why: "Risk-based prioritization helps teams use time and resources where consumer protection needs them most.",
+          clue: "Two markets report similar quality signals, but one involves a higher-risk ingredient and higher consumer exposure. Name three criteria that should guide where the team acts first, and the first action.",
+          response: "Use risk ranking criteria such as severity, likelihood, exposure or volume, detectability, and uncertainty; act first to contain or investigate the highest-risk signal.",
+          hostAccepts: "Correct answers should include at least three criteria such as severity, likelihood, exposure/volume, detectability, vulnerable consumers, uncertainty, or regulatory/customer impact, plus a first action such as containment, escalation, investigation, or targeted verification.",
+          why: "Risk-based prioritization is a decision discipline, not just a label; teams need criteria and a first action.",
           tag: "Risk Ranking",
           bridge: "Data and science move teams from scattered signals to focused, cost-effective solutions.",
-          riskCard: { signal: "Similar signals across markets", risk: "Higher-risk exposure not prioritized", action: "Rank risk and act where impact is greatest" }
+          riskCard: { signal: "Similar signals across markets", risk: "Higher-risk exposure not prioritized", action: "Rank criteria and act where impact is greatest" }
         },
         {
           value: 500,
@@ -294,7 +294,7 @@ window.JeopardyData = {
         },
         {
           value: 200,
-          clue: "WHO's 2026 campaign emphasizes using these to guide targeted food safety solutions.",
+          clue: "The 2026 campaign lens says targeted food safety solutions should be guided by burden/risk information and scientific evidence. Name the two guideposts.",
           response: "Data and science, or evidence.",
           hostAccepts: "Accept data, science, evidence, burden data, risk data, surveillance data, or evidence-based insight.",
           why: "Data and science help teams focus on the highest risks instead of guessing where to act.",
@@ -324,13 +324,13 @@ window.JeopardyData = {
         },
         {
           value: 500,
-          clue: "Why does 'safe food everywhere' require more than manufacturing and QA?",
-          response: "Because design, sourcing, labels, systems, training, logistics, data, communication, resources, and leadership decisions can all reduce or add risk.",
-          hostAccepts: "Accept answers naming at least three non-QA/manufacturing functions or decisions and explaining how they influence consumer protection.",
-          why: "Food safety is shaped by decisions across the business, not only by final product checks.",
+          clue: "A recurring consumer-protection signal crosses supplier, label, logistics, and site data. Build a solution plan: name the evidence inputs, how to rank risk, owners, preventive controls, and how effectiveness will be verified.",
+          response: "Use cross-functional evidence, rank risk by consumer impact and exposure, assign owners, target preventive controls, and verify effectiveness with follow-up evidence.",
+          hostAccepts: "Strong answers should include evidence inputs, risk-ranking criteria, cross-functional owners, preventive or systemic controls, and an effectiveness check. Prompt if the answer only says 'work together' without evidence, owners, controls, and verification.",
+          why: "Top-value solutions require more than naming functions; they connect facts, decisions, accountability, prevention, and proof.",
           tag: "Trust",
-          bridge: "Cross-functional ownership turns a shared burden into a shared solution.",
-          riskCard: { signal: "Multiple functions influence risk", risk: "Uncoordinated decisions", action: "Align design, sourcing, systems, labels, logistics, data, and response" }
+          bridge: "Cross-functional ownership turns a shared burden into a verified solution.",
+          riskCard: { signal: "Recurring cross-functional signal", risk: "Uncoordinated decisions", action: "Align evidence, owners, controls, and verification" }
         }
       ]
     }

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Food Safety Face-Off</title>
     <link rel="icon" href="assets/generated/coca-cola-logo.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="jeopardy-game.css?v=f51d811491">
+    <link rel="stylesheet" href="jeopardy-game.css?v=487910ef8a">
   </head>
   <body>
     <main class="game-shell">
@@ -39,9 +39,8 @@
           <div class="footer-status" aria-live="polite">
             <p class="progress-status" id="progressStatus">0/25 clues</p>
           </div>
-          <button class="text-button notes-button" type="button" id="hostNotesButton">Host Notes</button>
-          <a class="text-button quick-start-button" href="host-quick-start.html" target="_blank" rel="noopener">Quick Start</a>
-          <a class="text-button score-sheet-button" href="host-score-sheet.html" target="_blank" rel="noopener">Score Sheet</a>
+          <a class="text-button quick-start-button" href="host-quick-start.html" target="_blank" rel="noopener" aria-label="Quick Start, opens in a new tab">Quick Start<span class="new-tab-cue" aria-hidden="true">New tab</span></a>
+          <a class="text-button score-sheet-button" href="host-score-sheet.html" target="_blank" rel="noopener" aria-label="Score Sheet, opens in a new tab">Score Sheet<span class="new-tab-cue" aria-hidden="true">New tab</span></a>
           <button class="text-button undo-button" type="button" id="undoButton" disabled>Undo</button>
         </div>
         <div class="footer-flow">
@@ -187,29 +186,6 @@
       </section>
     </dialog>
 
-    <dialog class="setup-dialog" id="hostNotesDialog" aria-labelledby="hostNotesTitle">
-      <section class="setup-panel host-notes-panel">
-        <div class="host-notes-header">
-          <div>
-            <p class="eyebrow">Facilitator Cue Card</p>
-            <h2 id="hostNotesTitle">Host Notes</h2>
-            <p class="host-notes-subtitle">Keep the game moving and connect each answer to prevention.</p>
-          </div>
-          <button class="icon-button modal-close-button" type="button" id="closeHostNotesIcon" title="Close Host Notes" aria-label="Close Host Notes">X</button>
-        </div>
-        <div class="host-notes-body">
-          <div class="host-note-section">
-            <h3 class="section-title">Run of Show</h3>
-            <div class="host-note-grid" id="hostScriptList"></div>
-            <h3 class="section-title recent-title">Recent Plays</h3>
-            <div class="recent-play-list" id="recentPlayList">
-              <p>No plays yet.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-    </dialog>
-
     <dialog class="setup-dialog" id="resumeDialog" aria-labelledby="resumeTitle">
       <section class="setup-panel confirm-panel">
         <div>
@@ -269,10 +245,10 @@
       </section>
     </dialog>
 
-    <script src="jeopardy-data.js?v=9f1b71af3b"></script>
+    <script src="jeopardy-data.js?v=44184c0374"></script>
     <script src="state-utils.js?v=f7b79de62c"></script>
     <script src="jeopardy-sound.js?v=bf4ef04a83"></script>
     <script src="jeopardy-dialogs.js?v=20d83550f6"></script>
-    <script src="jeopardy-game.js?v=51e09b4850"></script>
+    <script src="jeopardy-game.js?v=8535897dfb"></script>
   </body>
 </html>

@@ -117,9 +117,13 @@
       });
 
       const table = document.getElementById("scoreBoardTable");
+      const caption = document.createElement("caption");
+      caption.textContent = "Board tracker by category and point value";
+      table.appendChild(caption);
       const headRow = document.createElement("tr");
       data.categories.forEach((category) => {
         const th = document.createElement("th");
+        th.scope = "col";
         th.textContent = category.shortName;
         headRow.appendChild(th);
       });

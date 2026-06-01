@@ -82,14 +82,16 @@ test("gameboard exposes host support links from footer", async ({ page, context 
   await page.goto("/jeopardy-game.html?test=score-sheet-footer");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await expect(page.getByRole("button", { name: "Host Notes" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Host Notes" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Next Team" })).toHaveCount(0);
   const quickStartLink = page.getByRole("link", { name: "Quick Start" });
   await expect(quickStartLink).toBeVisible();
+  await expect(page.getByRole("link", { name: "Quick Start, opens in a new tab" })).toBeVisible();
   await expect(quickStartLink).toHaveAttribute("href", "host-quick-start.html");
   await expect(quickStartLink).toHaveAttribute("target", "_blank");
   const scoreSheetLink = page.getByRole("link", { name: "Score Sheet" });
   await expect(scoreSheetLink).toBeVisible();
+  await expect(page.getByRole("link", { name: "Score Sheet, opens in a new tab" })).toBeVisible();
   await expect(scoreSheetLink).toHaveAttribute("href", "host-score-sheet.html");
   await expect(scoreSheetLink).toHaveAttribute("target", "_blank");
 
@@ -255,8 +257,12 @@ test("jeopardy clue can reveal, no-score, and undo", async ({ page }) => {
   await expect(page.getByRole("button", { name: "No Score" })).toBeEnabled();
   await page.getByRole("button", { name: "No Score" }).click();
   await expect(page.getByText("1/25")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Food Safety Basics for 200 points" })).toBeFocused();
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.getByText("0/25")).toBeVisible();
+  await page.getByRole("button", { name: "Food Safety Basics for 100 points" }).click();
+  await expect(page.getByText("Category Lens")).toBeVisible();
+  await expect(page.locator("#clueDialog").getByText("Every check protects someone.")).toBeVisible();
 });
 
 test("incorrect answer opens one-click steal close", async ({ page }) => {
@@ -322,6 +328,7 @@ test("correct auto-close undo returns to board", async ({ page }) => {
   await page.getByRole("button", { name: "Correct +100" }).click();
   await expect(page.locator("#clueDialog")).not.toBeVisible();
   await expect(page.getByText("1/25")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Food Safety Basics for 200 points" })).toBeFocused();
   await page.getByRole("button", { name: "Undo" }).click();
   await expect(page.locator("#clueDialog")).not.toBeVisible();
   await expect(page.getByText("0/25")).toBeVisible();
@@ -682,10 +689,10 @@ test("streamlined game controls stay removed from live UI", async ({ page }) => 
   await expect(page.getByRole("button", { name: "Show Winner" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /Start 30s|Stop Timer/ })).toHaveCount(0);
   await expect(page.getByText("Challenge Clue")).toHaveCount(0);
-  await page.getByRole("button", { name: "Host Notes" }).click();
+  await expect(page.getByRole("button", { name: "Host Notes" })).toHaveCount(0);
   await expect(page.getByText("Shortcuts")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Print Score Sheet" })).toHaveCount(0);
-  await expect(page.getByText("Recent Plays")).toBeVisible();
+  await expect(page.getByText("Recent Plays")).toHaveCount(0);
 });
 
 test("legacy saved results cannot bypass final completion", async ({ page }) => {
@@ -827,6 +834,10 @@ test("game layout avoids horizontal overflow at core viewports", async ({ page }
     await expect(page.getByRole("heading", { name: "Food Safety Face-Off" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Final Jeopardy" })).toBeVisible();
     await expectNoPageOverflow(page);
+    if (viewport.width === 390) {
+      const mobileBoardTop = await page.locator("#mobileBoard").evaluate((element) => element.getBoundingClientRect().top);
+      expect(mobileBoardTop).toBeLessThan(viewport.height);
+    }
   }
 });
 
@@ -855,18 +866,13 @@ test("primary dialogs remain usable across target viewport families", async ({ p
     await expectNoPageOverflow(page);
     await page.getByRole("button", { name: "Close rules" }).click();
 
-    await page.getByRole("button", { name: "Host Notes" }).click();
-    await expect(page.getByRole("heading", { name: "Host Notes" })).toBeVisible();
-    await expect(page.getByText("Recent Plays")).toBeVisible();
-    await expectNoPageOverflow(page);
-    await page.getByRole("button", { name: "Close Host Notes" }).click();
-
     await page.getByRole("button", { name: "Food Safety Basics for 100 points" }).click();
     await page.getByRole("button", { name: "Reveal Response" }).click();
     await expect(page.getByRole("heading", { name: "The consumer." })).toBeVisible();
     await expect(page.getByRole("button", { name: "Correct +100" })).toBeVisible();
     await expectNoPageOverflow(page);
-    await page.getByRole("button", { name: "No Score / Close" }).click();
+    await page.locator("#noScoreButton").click();
+    await expect(page.locator("#clueDialog")).not.toHaveAttribute("open", "");
 
     await page.getByRole("button", { name: "Final Jeopardy" }).click();
     await expect(page.getByRole("heading", { name: "Start Final Jeopardy?" })).toHaveCount(0);
@@ -917,6 +923,12 @@ test.describe("reduced motion", () => {
       getComputedStyle(element).animationName
     ));
     expect(animationName).toBe("none");
+    const motionStyles = await page.evaluate(() => ({
+      progressTransition: getComputedStyle(document.querySelector(".progress-status")).transitionDuration,
+      toastTransition: getComputedStyle(document.querySelector(".score-toast")).transitionDuration
+    }));
+    expect(motionStyles.progressTransition).toBe("0s");
+    expect(motionStyles.toastTransition).toBe("0s");
   });
 });
 
@@ -968,6 +980,8 @@ test("host score sheet route renders print controls", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Print Score Sheet" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Quick Start" })).toHaveAttribute("href", "host-quick-start.html");
   await expect(page.getByRole("table")).toBeVisible();
+  await expect(page.getByRole("table", { name: "Board tracker by category and point value" })).toBeVisible();
+  await expect(page.locator("th[scope='col']")).toHaveCount(5);
 });
 
 test("host quick start route renders printable facilitator guide", async ({ page }) => {
@@ -982,6 +996,8 @@ test("host quick start route renders printable facilitator guide", async ({ page
     await expect(page.getByRole("heading", { name: "Host Quick Start" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Print / Save PDF" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Score Sheet" })).toHaveAttribute("href", "host-score-sheet.html");
+    await expect(page.getByRole("heading", { name: "Host Notes" })).toBeVisible();
+    await expect(page.getByText("Keep examples generic")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Scoring Rules" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Final Jeopardy Flow" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Debrief Cue" })).toBeVisible();
