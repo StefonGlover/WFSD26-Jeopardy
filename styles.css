@@ -59,28 +59,14 @@ p {
   cursor: pointer;
 }
 
-.secondary-button {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid var(--coke-red);
-  border-radius: 999px;
-  background: var(--white);
-  color: var(--coke-red);
-  padding: 0 18px;
-  font-weight: 900;
-  text-decoration: none;
-}
-
-.score-sheet-page {
+.host-guide-page {
   min-height: 100vh;
   background: #f7f1e8;
   color: var(--ink);
   padding: 24px;
 }
 
-.score-sheet {
+.host-guide {
   width: min(1100px, 100%);
   margin: 0 auto;
   border-radius: 8px;
@@ -89,7 +75,7 @@ p {
   padding: 28px;
 }
 
-.score-sheet-header {
+.host-guide-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -105,98 +91,25 @@ p {
   justify-content: flex-end;
 }
 
-.score-sheet-header h1 {
+.host-guide-header h1 {
   margin-bottom: 8px;
   font-size: clamp(38px, 6vw, 72px);
   line-height: 0.95;
 }
 
-.score-sheet-header p:last-child {
+.host-guide-header p:last-child {
   margin-bottom: 0;
 }
 
-.score-sheet-section {
+.host-guide-section {
   margin-top: 24px;
 }
 
-.score-sheet-section h2 {
+.host-guide-section h2 {
   margin-bottom: 12px;
   color: var(--coke-red);
   font-size: 22px;
   text-transform: uppercase;
-}
-
-.score-team-grid,
-.final-score-grid,
-.score-note-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.score-team-grid article,
-.final-score-grid article,
-.score-note-grid article {
-  min-height: 110px;
-  border: 2px solid var(--line);
-  border-radius: 8px;
-  padding: 12px;
-}
-
-.score-team-grid strong,
-.final-score-grid strong,
-.score-note-grid span {
-  display: block;
-  margin-bottom: 10px;
-  font-weight: 900;
-  text-transform: uppercase;
-}
-
-.score-board-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-
-.score-board-table caption {
-  margin-bottom: 8px;
-  font-size: 13px;
-  font-weight: 900;
-  text-align: left;
-  text-transform: uppercase;
-}
-
-.score-board-table th,
-.score-board-table td {
-  border: 2px solid var(--line);
-  padding: 14px 8px;
-  text-align: center;
-  font-weight: 900;
-}
-
-.score-board-table th {
-  background: var(--coke-red);
-  color: var(--white);
-  text-transform: uppercase;
-}
-
-.score-board-table td {
-  height: 76px;
-  font-size: 28px;
-}
-
-.score-board-table td span {
-  display: block;
-  margin-top: 4px;
-  color: var(--coke-red);
-  font-size: 11px;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.score-board-table td.used-clue {
-  background: #fff0f0;
-  color: #8a0000;
 }
 
 .quick-start-sheet {
@@ -262,15 +175,15 @@ p {
 }
 
 @media (max-width: 760px) {
-  .score-sheet-page {
+  .host-guide-page {
     padding: 12px;
   }
 
-  .score-sheet {
+  .host-guide {
     padding: 18px;
   }
 
-  .score-sheet-header {
+  .host-guide-header {
     display: grid;
   }
 
@@ -278,27 +191,10 @@ p {
     justify-content: flex-start;
   }
 
-  .score-team-grid,
-  .final-score-grid,
-  .score-note-grid,
   .quick-start-hero,
   .quick-rule-grid,
   .quick-note-grid {
     grid-template-columns: 1fr;
-  }
-
-  .score-board-table {
-    font-size: 12px;
-  }
-
-  .score-board-table th,
-  .score-board-table td {
-    padding: 10px 4px;
-  }
-
-  .score-board-table td {
-    height: 56px;
-    font-size: 20px;
   }
 }
 
@@ -313,109 +209,50 @@ p {
     display: none;
   }
 
-  .score-sheet-page {
+  .host-guide-page {
     background: #fff;
     padding: 0;
   }
 
-  .score-sheet {
+  .host-guide {
     width: 100%;
     box-shadow: none;
     padding: 0;
   }
 
-  .score-sheet-header {
+  .host-guide-header {
     padding-bottom: 8px;
   }
 
-  .score-sheet-header h1 {
+  .host-guide-header h1 {
     margin-bottom: 4px;
     font-size: 34px;
   }
 
-  .score-sheet-header p {
+  .host-guide-header p {
     margin-bottom: 0;
     font-size: 12px;
   }
 
-  .score-sheet-section {
+  .host-guide-section {
     margin-top: 8px;
     break-inside: avoid;
   }
 
-  .score-sheet-section h2 {
+  .host-guide-section h2 {
     margin-bottom: 5px;
     font-size: 15px;
   }
 
-  .score-team-grid,
-  .final-score-grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 6px;
-  }
-
-  .score-note-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
-  }
-
-  .score-team-grid article,
-  .final-score-grid article,
-  .score-note-grid article {
-    min-height: 52px;
-    border-width: 1px;
-    padding: 6px;
-  }
-
-  .score-team-grid strong,
-  .final-score-grid strong,
-  .score-note-grid span {
-    margin-bottom: 4px;
-    font-size: 10px;
-  }
-
-  .score-team-grid p,
-  .final-score-grid p,
-  .score-note-grid p {
-    margin-bottom: 2px;
-    font-size: 10px;
-    line-height: 1.2;
-  }
-
-  .score-board-table caption {
-    margin-bottom: 4px;
-    font-size: 9px;
-  }
-
-  .score-board-table th,
-  .score-board-table td {
-    border-width: 1px;
-    padding: 4px;
-  }
-
-  .score-board-table th {
-    font-size: 9px;
-  }
-
-  .score-board-table td {
-    height: 34px;
-    font-size: 15px;
-  }
-
-  .score-board-table td span {
-    margin-top: 1px;
-    font-size: 7px;
-  }
-
-  .quick-start-page .score-sheet {
+  .quick-start-page .host-guide {
     min-height: 10in;
   }
 
-  .quick-start-page .score-sheet-header h1 {
+  .quick-start-page .host-guide-header h1 {
     font-size: 42px;
   }
 
-  .quick-start-page .score-sheet-section,
+  .quick-start-page .host-guide-section,
   .quick-start-hero {
     margin-top: 16px;
   }

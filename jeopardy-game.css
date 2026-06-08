@@ -493,14 +493,6 @@ button:disabled {
   transition: background 0.45s ease;
 }
 
-.score-sheet-button {
-  min-height: 44px;
-  border-color: rgba(255, 209, 92, 0.34);
-  background: rgba(255, 209, 92, 0.08);
-  color: var(--gold);
-  white-space: nowrap;
-}
-
 .new-tab-cue {
   display: inline-flex;
   margin-left: 6px;
@@ -1976,7 +1968,6 @@ dialog::backdrop {
   }
 
   .quick-start-button,
-  .score-sheet-button,
   .undo-button {
     width: 100% !important;
   }

@@ -31,55 +31,14 @@ async function expectVisibleInViewport(page, locator) {
   expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
 }
 
-function scoreSheetSnapshotState() {
-  return {
-    version: 1,
-    teams: [
-      { name: "QA", score: 150 },
-      { name: "Supply", score: -50 },
-      { name: "Ops", score: 0 }
-    ],
-    activeTeam: 0,
-    usedClues: ["0-0", "1-2", "2-3", "4-4"],
-    seenCategoryPrompts: [],
-    actionHistory: [],
-    finalWagers: [50, 0, 0],
-    finalWagersLocked: true,
-    finalResponseRevealed: true,
-    finalScoredTeams: [0, 1, 2],
-    finalResults: [
-      { result: "partial", label: "Half", delta: 25 },
-      { result: "none", label: "Auto-reviewed", delta: 0 },
-      { result: "none", label: "Auto-reviewed", delta: 0 }
-    ],
-    finalComplete: false,
-    mobileCategoryIndex: 0,
-    currentClue: null,
-    openDialog: null
-  };
-}
-
-async function loadSeededScoreSheet(page) {
-  await page.goto("/host-score-sheet.html?test=visual-snapshot");
-  await page.evaluate(({ storageKey, state }) => {
-    localStorage.clear();
-    localStorage.setItem(storageKey, JSON.stringify(state));
-  }, {
-    storageKey: GAME_STATE_STORAGE_KEY,
-    state: scoreSheetSnapshotState()
-  });
-  await page.reload();
-  await expect(page.getByRole("heading", { name: "Host Score Sheet" })).toBeVisible();
-}
-
 test("root route opens directly to the gameboard", async ({ page }) => {
   await page.goto("/index.html");
   await expect(page).toHaveURL(/jeopardy-game\.html$/);
   await expect(page.getByRole("heading", { name: "Food Safety Face-Off" })).toBeVisible();
 });
 
-test("gameboard exposes host support links from footer", async ({ page, context }) => {
-  await page.goto("/jeopardy-game.html?test=score-sheet-footer");
+test("gameboard exposes host quick start link from footer", async ({ page, context }) => {
+  await page.goto("/jeopardy-game.html?test=quick-start-footer");
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await expect(page.getByRole("button", { name: "Host Notes" })).toHaveCount(0);
@@ -89,25 +48,14 @@ test("gameboard exposes host support links from footer", async ({ page, context 
   await expect(page.getByRole("link", { name: "Quick Start, opens in a new tab" })).toBeVisible();
   await expect(quickStartLink).toHaveAttribute("href", "host-quick-start.html");
   await expect(quickStartLink).toHaveAttribute("target", "_blank");
-  const scoreSheetLink = page.getByRole("link", { name: "Score Sheet" });
-  await expect(scoreSheetLink).toBeVisible();
-  await expect(page.getByRole("link", { name: "Score Sheet, opens in a new tab" })).toBeVisible();
-  await expect(scoreSheetLink).toHaveAttribute("href", "host-score-sheet.html");
-  await expect(scoreSheetLink).toHaveAttribute("target", "_blank");
+  await expect(page.getByRole("link", { name: "Score Sheet" })).toHaveCount(0);
 
-  let newPagePromise = context.waitForEvent("page");
+  const newPagePromise = context.waitForEvent("page");
   await quickStartLink.click();
   const quickStartPage = await newPagePromise;
   await expect(quickStartPage).toHaveURL(/host-quick-start\.html$/);
   await expect(quickStartPage.getByRole("heading", { name: "Host Quick Start" })).toBeVisible();
   await quickStartPage.close();
-
-  newPagePromise = context.waitForEvent("page");
-  await scoreSheetLink.click();
-  const scoreSheetPage = await newPagePromise;
-  await expect(scoreSheetPage).toHaveURL(/host-score-sheet\.html$/);
-  await expect(scoreSheetPage.getByRole("heading", { name: "Host Score Sheet" })).toBeVisible();
-  await scoreSheetPage.close();
 });
 
 test("sound toggle unlocks Web Audio from a user gesture", async ({ page }) => {
@@ -485,11 +433,6 @@ test("legacy final restore preserves locked wagers and derives completion", asyn
   expect(savedState.finalWagers).toEqual([150, 150, 150]);
   expect(savedState.finalResults.map((result) => `${result.label} ${result.delta}`)).toEqual(["Full 150", "Half 75", "Miss -150"]);
 
-  await page.goto("/host-score-sheet.html?test=legacy-final-wagers");
-  await expect(page.getByText("Wager: $150")).toHaveCount(3);
-  await expect(page.getByText("Result: Full +150")).toBeVisible();
-  await expect(page.getByText("Result: Half +75")).toBeVisible();
-  await expect(page.getByText("Result: Miss -150")).toBeVisible();
 });
 
 test("new final flow persists starting scores through scoring and reload", async ({ page }) => {
@@ -691,7 +634,7 @@ test("streamlined game controls stay removed from live UI", async ({ page }) => 
   await expect(page.getByText("Challenge Clue")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Host Notes" })).toHaveCount(0);
   await expect(page.getByText("Shortcuts")).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Print Score Sheet" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Score Sheet" })).toHaveCount(0);
   await expect(page.getByText("Recent Plays")).toHaveCount(0);
 });
 
@@ -974,16 +917,6 @@ test("saved game prompt can start fresh", async ({ page }) => {
   await expect(page.getByText("Saved QA")).toHaveCount(0);
 });
 
-test("host score sheet route renders print controls", async ({ page }) => {
-  await page.goto("/host-score-sheet.html");
-  await expect(page.getByRole("heading", { name: "Host Score Sheet" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Print Score Sheet" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Quick Start" })).toHaveAttribute("href", "host-quick-start.html");
-  await expect(page.getByRole("table")).toBeVisible();
-  await expect(page.getByRole("table", { name: "Board tracker by category and point value" })).toBeVisible();
-  await expect(page.locator("th[scope='col']")).toHaveCount(5);
-});
-
 test("host quick start route renders printable facilitator guide", async ({ page }) => {
   const viewports = [
     { width: 390, height: 844 },
@@ -995,7 +928,7 @@ test("host quick start route renders printable facilitator guide", async ({ page
     await page.goto(`/host-quick-start.html?test=quick-start-${viewport.width}`);
     await expect(page.getByRole("heading", { name: "Host Quick Start" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Print / Save PDF" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Score Sheet" })).toHaveAttribute("href", "host-score-sheet.html");
+    await expect(page.getByRole("link", { name: "Score Sheet" })).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Host Notes" })).toBeVisible();
     await expect(page.getByText("Keep examples generic")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Scoring Rules" })).toBeVisible();
@@ -1003,100 +936,6 @@ test("host quick start route renders printable facilitator guide", async ({ page
     await expect(page.getByRole("heading", { name: "Debrief Cue" })).toBeVisible();
     await expectNoPageOverflow(page);
   }
-});
-
-test("host score sheet reflects saved scores, used clues, wagers, and final results", async ({ page }) => {
-  await page.goto("/host-score-sheet.html?test=saved-state");
-  await page.evaluate((storageKey) => {
-    localStorage.clear();
-    localStorage.setItem(storageKey, JSON.stringify({
-      version: 1,
-      teams: [
-        { name: "QA", score: 150 },
-        { name: "Supply", score: -50 },
-        { name: "Ops", score: 0 }
-      ],
-      activeTeam: 0,
-      usedClues: ["0-0", "2-3"],
-      seenCategoryPrompts: [],
-      actionHistory: [],
-      finalWagers: [50, 0, 0],
-      finalWagersLocked: true,
-      finalResponseRevealed: true,
-      finalScoredTeams: [0, 1, 2],
-      finalResults: [
-        { result: "partial", label: "Half", delta: 25 },
-        { result: "none", label: "Auto-reviewed", delta: 0 },
-        { result: "none", label: "Auto-reviewed", delta: 0 }
-      ],
-      finalComplete: false,
-      mobileCategoryIndex: 0,
-      currentClue: null,
-      openDialog: null
-    }));
-  }, GAME_STATE_STORAGE_KEY);
-  await page.reload();
-  await expect(page.locator("#scoreTeamGrid").getByText("QA")).toBeVisible();
-  await expect(page.getByText("Score: $150")).toBeVisible();
-  await expect(page.getByText("Score: -$50")).toBeVisible();
-  await expect(page.locator(".used-clue")).toHaveCount(2);
-  await expect(page.getByText("Wager: $50")).toBeVisible();
-  await expect(page.getByText("Result: Half +25")).toBeVisible();
-  await expect(page.getByText("Result: Auto-reviewed")).toHaveCount(2);
-});
-
-test("host score sheet desktop visual snapshot", async ({ page }) => {
-  await page.setViewportSize({ width: 1100, height: 900 });
-  await loadSeededScoreSheet(page);
-  await expect(page).toHaveScreenshot("host-score-sheet-desktop.png", {
-    animations: "disabled",
-    fullPage: true
-  });
-});
-
-test("host score sheet mobile visual snapshot", async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await loadSeededScoreSheet(page);
-  await expect(page).toHaveScreenshot("host-score-sheet-mobile.png", {
-    animations: "disabled",
-    fullPage: true
-  });
-});
-
-test("host score sheet print visual snapshot", async ({ page }) => {
-  await page.setViewportSize({ width: 1056, height: 816 });
-  await page.emulateMedia({ media: "print" });
-  await loadSeededScoreSheet(page);
-  await expect(page).toHaveScreenshot("host-score-sheet-print.png", {
-    animations: "disabled",
-    fullPage: true
-  });
-});
-
-test("host score sheet ignores stale final results before response reveal", async ({ page }) => {
-  await page.goto("/host-score-sheet.html?test=stale-final-results");
-  await page.evaluate((storageKey) => {
-    localStorage.clear();
-    localStorage.setItem(storageKey, JSON.stringify({
-      version: 1,
-      teams: [
-        { name: "A", score: 500 },
-        { name: "B", score: 300 }
-      ],
-      finalWagersLocked: false,
-      finalResponseRevealed: false,
-      finalWagers: [999999, -10],
-      finalResults: [
-        { result: "correct", label: "Full", delta: 999999 },
-        { result: "incorrect", label: "Miss", delta: -50 }
-      ],
-      finalScoredTeams: [0, 1]
-    }));
-  }, GAME_STATE_STORAGE_KEY);
-  await page.reload();
-  await expect(page.getByText("Wager: $500")).toBeVisible();
-  await expect(page.getByText("Result: Full +500")).toHaveCount(0);
-  await expect(page.getByText("Result: Miss -300")).toHaveCount(0);
 });
 
 test("malformed saved game state is normalized before restoring", async ({ page }) => {
@@ -1197,35 +1036,4 @@ test("restored resolved current clue is reconciled with used clues", async ({ pa
   await expect(page.locator("#progressStatus")).toHaveText("1/25 clues");
   await page.locator("#closeClueButton").click();
   await expect(page.getByRole("button", { name: "Food Safety Basics for 100 points" })).toBeDisabled();
-});
-
-test("host score sheet sanitizes malformed saved state", async ({ page }) => {
-  await page.goto("/host-score-sheet.html?test=malformed-state");
-  await page.evaluate((storageKey) => {
-    localStorage.clear();
-    localStorage.setItem(storageKey, JSON.stringify({
-      version: 1,
-      teams: [
-        { name: "<svg onload='window.__scoreSheetInjected=true'>VeryLongTeamNameThatShouldBeTrimmed", score: 50 },
-        { name: "Supply", score: 25 },
-        { name: "Ops", score: 0 },
-        { name: "QA", score: 0 },
-        { name: "Lab", score: 0 },
-        { name: "Extra", score: 0 }
-      ],
-      usedClues: ["0-0", "9-9", "not-a-clue"],
-      finalResponseRevealed: true,
-      finalWagers: [99999],
-      finalResults: [
-        { result: "correct", label: "<script>alert(1)</script>", delta: 99999 }
-      ],
-      finalScoredTeams: [0, 99]
-    }));
-  }, GAME_STATE_STORAGE_KEY);
-  await page.reload();
-  await expect(page.locator("#scoreTeamGrid article")).toHaveCount(5);
-  await expect(page.locator(".used-clue")).toHaveCount(1);
-  await expect(page.getByText("Wager: $50")).toBeVisible();
-  await expect(page.getByText("Result: Full +50")).toBeVisible();
-  await expect(page.getByText("<script>alert(1)</script>")).toHaveCount(0);
 });
