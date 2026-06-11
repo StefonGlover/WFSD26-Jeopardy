@@ -6,6 +6,7 @@
   const SCORE_LIMIT = 999999;
   const SAFE_ASSET_PATTERN = /^assets\/generated\/[A-Za-z0-9._-]+\.(png|webp|svg)$/;
   const HISTORY_TYPES = new Set(["positive", "negative", "neutral", "partial"]);
+  const UNDO_SCOPES = new Set(["board", "clue", "final"]);
   const DEFAULT_TEAMS = [
     { name: "Team 1", score: 0 },
     { name: "Team 2", score: 0 },
@@ -150,6 +151,8 @@
     snapshot.undoSnapshot = null;
     return {
       label: normalizeText(undoSnapshot.label, "last action", 80),
+      scope: UNDO_SCOPES.has(undoSnapshot.scope) ? undoSnapshot.scope : "board",
+      clueId: normalizeText(undoSnapshot.clueId, "", 24),
       snapshot
     };
   }

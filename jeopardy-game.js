@@ -39,12 +39,14 @@ const state = {
   finalScoredTeams: new Set(),
   finalResults: [],
   finalComplete: false,
-  mobileCategoryIndex: 0
+  mobileCategoryIndex: 0,
+  presentationMode: false
 };
 
 const gameTitle = document.getElementById("gameTitle");
 const gameSubtitle = document.getElementById("gameSubtitle");
 const gameTheme = document.getElementById("gameTheme");
+const presentationButton = document.getElementById("presentationButton");
 const soundButton = document.getElementById("soundButton");
 const scoreboard = document.getElementById("scoreboard");
 const gameBoard = document.getElementById("gameBoard");
@@ -258,11 +260,14 @@ function serializeState({ includeTransient = false, includeUndo = true } = {}) {
     finalResults: Array.from({ length: totalTeams }, (_, index) => sanitizeFinalResult(state.finalResults[index])),
     finalComplete: state.finalComplete,
     mobileCategoryIndex: state.mobileCategoryIndex,
+    presentationMode: state.presentationMode,
     currentClue: includeTransient ? serializeCurrentClue() : null,
     openDialog: includeTransient ? getOpenDialogName() : null,
     undoSnapshot: includeUndo && state.undoSnapshot
       ? {
         label: state.undoSnapshot.label,
+        scope: state.undoSnapshot.scope,
+        clueId: state.undoSnapshot.clueId,
         snapshot: state.undoSnapshot.snapshot
       }
       : null
@@ -328,15 +333,15 @@ function normalizeFinalState() {
     const maxWager = getFinalWagerCap(index);
     return clampNumber(state.finalWagers[index], 0, maxWager);
   });
-  state.finalScoredTeams = state.finalResponseRevealed
-    ? new Set([...state.finalScoredTeams]
-      .filter((index) => Number.isInteger(index) && index >= 0 && index < state.teams.length))
-    : new Set();
+  const rawScoredTeams = state.finalResponseRevealed
+    ? [...state.finalScoredTeams].filter((index) => Number.isInteger(index) && index >= 0 && index < state.teams.length)
+    : [];
   state.finalResults = Array.from({ length: state.teams.length }, (_, index) => (
     state.finalResponseRevealed
       ? normalizeFinalResultForWager(state.finalResults[index], state.finalWagers[index])
       : sanitizeFinalResult(null)
   ));
+  state.finalScoredTeams = new Set(rawScoredTeams.filter(finalResultCountsAsScored));
 }
 
 function getRawFinalWager(finalWagers, index) {
@@ -373,6 +378,7 @@ function restoreState(snapshot, { reopenDialogs = false } = {}) {
     Math.max(0, Number(snapshot.mobileCategoryIndex) || 0),
     gameData.categories.length - 1
   );
+  state.presentationMode = Boolean(snapshot.presentationMode);
   state.undoSnapshot = sanitizeUndoSnapshot(snapshot.undoSnapshot);
   restoreCurrentClue(snapshot.currentClue);
   renderState();
@@ -614,6 +620,7 @@ function restoreOpenDialog(dialogName) {
 }
 
 function renderState() {
+  updatePresentationButton();
   updateFinalButton();
   renderScoreboard();
   renderTeamSelect();
@@ -710,21 +717,24 @@ function updateUndoButton() {
   undoButton.disabled = disabled;
   undoButton.title = title;
   if (finalUndoButton) {
-    finalUndoButton.disabled = disabled;
-    finalUndoButton.title = title;
+    const finalUndoAvailable = isFinalUndoSnapshot(state.undoSnapshot);
+    finalUndoButton.disabled = !finalUndoAvailable;
+    finalUndoButton.title = finalUndoAvailable ? title : "No Final Jeopardy step to undo";
   }
 }
 
-function captureUndo(label, { includeTransient = true } = {}) {
+function captureUndo(label, { includeTransient = true, scope = "board", clueId = null } = {}) {
   state.undoSnapshot = {
     label,
+    scope,
+    clueId,
     snapshot: serializeState({ includeTransient, includeUndo: false })
   };
   updateUndoButton();
 }
 
 function captureClueResolutionUndo(label) {
-  captureUndo(label, { includeTransient: false });
+  captureUndo(label, { includeTransient: false, scope: "clue", clueId: state.currentClue?.id || null });
   const categoryId = state.currentClue?.category?.id;
   if (categoryId && state.currentClue.categoryPromptWasNew && state.undoSnapshot?.snapshot) {
     state.undoSnapshot.snapshot.seenCategoryPrompts = state.undoSnapshot.snapshot.seenCategoryPrompts
@@ -738,8 +748,36 @@ function relabelUndo(label) {
   updateUndoButton();
 }
 
-function undoLastAction() {
-  if (!state.undoSnapshot) return;
+function isFinalUndoSnapshot(snapshot) {
+  return snapshot?.scope === "final";
+}
+
+function undoAllowedInCurrentContext({ source = "global" } = {}) {
+  if (!state.undoSnapshot) return false;
+  const scope = state.undoSnapshot.scope || "board";
+  if (source === "final") return scope === "final";
+  if (isDialogOpen(finalDialog)) return scope === "final";
+  if (isDialogOpen(clueDialog)) {
+    return scope === "clue" && state.undoSnapshot.clueId === state.currentClue?.id;
+  }
+  return true;
+}
+
+function rebaseUndoSnapshotTeamNames() {
+  if (!state.undoSnapshot?.snapshot?.teams) return;
+  if (state.undoSnapshot.snapshot.teams.length !== state.teams.length) {
+    state.undoSnapshot = null;
+    updateUndoButton();
+    return;
+  }
+  state.undoSnapshot.snapshot.teams = state.undoSnapshot.snapshot.teams.map((team, index) => ({
+    ...team,
+    name: state.teams[index].name
+  }));
+}
+
+function undoLastAction(options = {}) {
+  if (!undoAllowedInCurrentContext(options)) return;
   const { label, snapshot } = state.undoSnapshot;
   restoreState(snapshot, { reopenDialogs: true });
   state.undoSnapshot = null;
@@ -845,6 +883,47 @@ function updateSoundButton() {
     state.soundMuted ? "Sound is off. Turn sound on." : "Sound is on. Turn sound off."
   );
   soundButton.setAttribute("title", state.soundMuted ? "Turn sound on" : "Turn sound off");
+}
+
+function updatePresentationButton() {
+  if (!presentationButton) return;
+  document.body.classList.toggle("presentation-mode", state.presentationMode);
+  presentationButton.textContent = state.presentationMode ? "Exit" : "Present";
+  presentationButton.setAttribute("aria-pressed", String(state.presentationMode));
+  presentationButton.setAttribute(
+    "aria-label",
+    state.presentationMode ? "Exit presentation mode" : "Enter presentation mode"
+  );
+  presentationButton.setAttribute(
+    "title",
+    state.presentationMode ? "Exit presentation mode" : "Enter presentation mode"
+  );
+}
+
+async function togglePresentationMode() {
+  const entering = !state.presentationMode;
+  state.presentationMode = entering;
+  updatePresentationButton();
+  saveState();
+  try {
+    if (entering && !document.fullscreenElement && document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen();
+    } else if (!entering && document.fullscreenElement && document.exitFullscreen) {
+      await document.exitFullscreen();
+    }
+  } catch (error) {
+    showToast(entering ? "Presentation layout enabled" : "Presentation layout disabled", "neutral");
+  }
+  saveState();
+}
+
+function syncFullscreenState() {
+  const stillFullscreen = Boolean(document.fullscreenElement);
+  if (!stillFullscreen && state.presentationMode) {
+    state.presentationMode = false;
+    updatePresentationButton();
+    saveState();
+  }
 }
 
 function getAudioContext({ force = false } = {}) {
@@ -1179,6 +1258,7 @@ function saveTeams() {
   if (state.finalComplete && !finalReadyForResults()) {
     state.finalComplete = false;
   }
+  rebaseUndoSnapshotTeamNames();
   normalizeFinalState();
   renderScoreboard();
   renderTeamSelect();
@@ -1460,6 +1540,8 @@ function resetGameState({ keepTeamNames = true } = {}) {
   state.finalResults = [];
   state.finalComplete = false;
   state.mobileCategoryIndex = 0;
+  state.presentationMode = false;
+  updatePresentationButton();
   updateFinalButton();
 }
 
@@ -1548,7 +1630,7 @@ function renderWagers() {
     const isScored = state.finalScoredTeams.has(index);
     const maxWager = getFinalWagerCap(index);
     const inputLocked = state.finalWagersLocked || state.finalResponseRevealed || isScored || state.finalComplete;
-    const storedWager = Math.max(0, Number(state.finalWagers[index]) || 0);
+    const storedWager = clampNumber(state.finalWagers[index], 0, maxWager);
     const wager = state.finalWagersLocked ? storedWager : Math.min(maxWager, storedWager);
     state.finalWagers[index] = wager;
     const showScoreActions = state.finalResponseRevealed || isScored || state.finalComplete;
@@ -1652,13 +1734,13 @@ function updateFinalControls() {
 function normalizeFinalWagers() {
   state.teams.forEach((team, index) => {
     const maxWager = getFinalWagerCap(index);
-    state.finalWagers[index] = Math.min(maxWager, Math.max(0, Number(state.finalWagers[index]) || 0));
+    state.finalWagers[index] = clampNumber(state.finalWagers[index], 0, maxWager);
   });
 }
 
 function lockFinalWagers() {
   if (state.finalWagersLocked || state.finalResponseRevealed || state.finalComplete) return;
-  captureUndo("lock Final wagers");
+  captureUndo("lock Final wagers", { scope: "final" });
   state.finalStartingScores = state.teams.map((team) => Math.max(0, team.score));
   normalizeFinalWagers();
   state.finalWagersLocked = true;
@@ -1673,7 +1755,7 @@ function lockFinalWagers() {
 
 function revealFinal() {
   if (!state.finalWagersLocked || state.finalResponseRevealed || state.finalComplete) return;
-  captureUndo("reveal Final Jeopardy");
+  captureUndo("reveal Final Jeopardy", { scope: "final" });
   playSound("reveal");
   finalResponseBlock.hidden = false;
   state.finalResponseRevealed = true;
@@ -1707,6 +1789,12 @@ function advanceFinalStage() {
 
 function finalReadyForResults() {
   return state.finalResponseRevealed && state.finalScoredTeams.size === state.teams.length;
+}
+
+function finalResultCountsAsScored(index) {
+  const wager = clampNumber(state.finalWagers[index], 0, getFinalWagerCap(index));
+  if (wager === 0) return true;
+  return sanitizeFinalResult(state.finalResults[index]).result !== "none";
 }
 
 function syncFinalZeroWagers() {
@@ -1750,7 +1838,7 @@ function applyFinalScore(button) {
   if (!state.finalWagersLocked || !state.finalResponseRevealed || state.finalScoredTeams.has(teamIndex) || state.finalComplete) return;
   const result = button.dataset.finalResult;
   const input = wagerGrid.querySelector(`[data-wager-index="${teamIndex}"]`);
-  const wager = Math.max(0, Number(state.finalWagers[teamIndex]) || 0);
+  const wager = clampNumber(state.finalWagers[teamIndex], 0, getFinalWagerCap(teamIndex));
   input.value = String(wager);
   state.finalWagers[teamIndex] = wager;
   const scoring = {
@@ -1760,7 +1848,7 @@ function applyFinalScore(button) {
   }[result] || { delta: 0, type: "neutral", sound: "reveal", label: "Score" };
   const delta = scoring.delta;
   const resultType = scoring.type;
-  captureUndo(`${state.teams[teamIndex].name} Final ${formatDelta(delta)}`);
+  captureUndo(`${state.teams[teamIndex].name} Final ${formatDelta(delta)}`, { scope: "final" });
   playSound(scoring.sound);
   state.teams[teamIndex].score += delta;
   state.finalScoredTeams.add(teamIndex);
@@ -1968,7 +2056,13 @@ function handleKeyboardShortcuts(event) {
   const key = event.key.toLowerCase();
   if (key === "u") {
     event.preventDefault();
-    undoLastAction();
+    undoLastAction({ source: "keyboard" });
+    return;
+  }
+
+  if (key === "f") {
+    event.preventDefault();
+    togglePresentationMode();
     return;
   }
 
@@ -1998,6 +2092,7 @@ function handleKeyboardShortcuts(event) {
 }
 
 function bindEvents() {
+  presentationButton?.addEventListener("click", togglePresentationMode);
   soundButton.addEventListener("click", toggleSound);
   document.getElementById("setupButton").addEventListener("click", openSetup);
   document.getElementById("closeSetupButton").addEventListener("click", () => closeDialog(setupDialog));
@@ -2018,7 +2113,7 @@ function bindEvents() {
     }
   });
   document.getElementById("closeFinalButton").addEventListener("click", () => closeDialog(finalDialog));
-  finalUndoButton.addEventListener("click", undoLastAction);
+  finalUndoButton.addEventListener("click", () => undoLastAction({ source: "final" }));
   document.getElementById("closeEndButton").addEventListener("click", () => closeDialog(endDialog));
   document.getElementById("resumeSavedButton").addEventListener("click", resumeSavedGame);
   document.getElementById("startFreshButton").addEventListener("click", startFreshFromPrompt);
@@ -2094,7 +2189,7 @@ function bindEvents() {
     if (!input) return;
     const teamIndex = Number(input.dataset.wagerIndex);
     const maxWager = Math.max(0, state.teams[teamIndex].score);
-    const wager = Math.min(maxWager, Math.max(0, Number(input.value) || 0));
+    const wager = clampNumber(input.value, 0, maxWager);
     state.finalWagers[teamIndex] = wager;
     if (input.value !== String(wager)) {
       input.value = String(wager);
@@ -2110,12 +2205,14 @@ function bindEvents() {
   } else if (mobileBoardQuery?.addListener) {
     mobileBoardQuery.addListener(updateBoardModeAccessibility);
   }
+  document.addEventListener("fullscreenchange", syncFullscreenState);
   document.addEventListener("keydown", handleKeyboardShortcuts);
 }
 
 function init() {
   state.soundMuted = readSoundPreference();
   updateSoundButton();
+  updatePresentationButton();
   hydrateGameText();
   renderRules();
   bindEvents();

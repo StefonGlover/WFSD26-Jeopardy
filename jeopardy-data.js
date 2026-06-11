@@ -68,7 +68,7 @@ window.JeopardyData = {
         },
         {
           value: 300,
-          clue: "Name three commonly taught hazard categories, and one additional category some local programs track separately.",
+          clue: "Name the three classic hazard categories and the category many programs manage separately because of labeling and consumer-sensitivity controls.",
           response: "Biological, chemical, physical, and sometimes allergen hazards.",
           hostAccepts: "Accept biological, chemical, and physical for the core three. Accept allergen as the additional local-program category, or as a fourth major category where local taxonomy treats it separately.",
           why: "Clear hazard language helps teams identify risk consistently and choose the right control.",
@@ -88,10 +88,10 @@ window.JeopardyData = {
         },
         {
           value: 500,
-          clue: "A corrective action fixes today's issue, but what future risk must be reduced and verified before the problem is truly solved?",
-          response: "The risk or chance of recurrence.",
-          hostAccepts: "Accept recurrence risk, repeat failure risk, likelihood the problem happens again, or effectiveness of the corrective action.",
-          why: "Closing an action is not enough; teams need evidence that the issue is less likely to happen again.",
+          clue: "After a corrective action is closed, name two pieces of evidence that show recurrence risk is reduced.",
+          response: "Effectiveness evidence such as follow-up verification, trend review, repeated check records, training or maintenance completion, or audit results showing the issue did not recur.",
+          hostAccepts: "Correct answers should name recurrence risk or effectiveness plus at least two evidence types, such as follow-up verification, clean trend data, repeated checks, retraining records, maintenance records, audit observations, or monitoring results.",
+          why: "Closing an action is not enough; teams need evidence from more than one source that the issue is less likely to happen again.",
           tag: "Prevention",
           bridge: "Prevention turns a one-time fix into a verified reduction in future risk.",
           riskCard: { signal: "Corrective action closed", risk: "Repeat failure", action: "Reduce recurrence and verify effectiveness" }
@@ -147,10 +147,10 @@ window.JeopardyData = {
         },
         {
           value: 500,
-          clue: "Two instructions conflict: an email says one thing, the controlled document says another. What should the team do and why?",
-          response: "Stop, verify the current approved instruction with the process owner or Quality Assurance (QA), follow the controlled process, and escalate/document the conflict.",
-          hostAccepts: "Accept answers that avoid improvising and include verification with Quality Assurance (QA) or the process owner plus escalation. Also accept urgent approved hold/deviation instructions when documented through the proper channel.",
-          why: "Controlled instructions protect teams from outdated, informal, or conflicting direction, while urgent safety decisions still need approved documentation.",
+          clue: "A controlled document and an urgent email conflict during a product release decision. Name the immediate product-control action, who verifies the approved path, and what must be documented before release.",
+          response: "Hold or block affected product, verify the current approved path with the process owner or Quality Assurance (QA), follow the controlled process or approved deviation, and document the conflict and release decision.",
+          hostAccepts: "Correct answers should include hold/block or stop release, verification with Quality Assurance (QA) or the process owner, and documented approved release or deviation logic. Prompt if the answer only says 'follow the controlled document' without product control and documentation.",
+          why: "Controlled instructions protect teams from outdated, informal, or conflicting direction, while urgent release decisions still need product control and approved documentation.",
           tag: "Training",
           bridge: "One trusted source of truth helps teams solve consistently across locations and functions.",
           riskCard: { signal: "Conflicting instruction", risk: "Wrong or inconsistent action", action: "Verify the approved path and escalate conflicts" }
@@ -166,7 +166,7 @@ window.JeopardyData = {
       clues: [
         {
           value: 100,
-          clue: "A repeated complaint, hold, expired document, or unusual record trend is an early signal that this may need attention.",
+          clue: "A repeated complaint, hold, expired document, or unusual record trend is not just noise; it is this kind of warning.",
           response: "A food safety signal or risk signal.",
           hostAccepts: "Accept signal, warning sign, trend, leading indicator, risk signal, or early indicator.",
           why: "Signals help teams notice risk before it becomes a larger consumer, customer, or business burden.",
@@ -206,12 +206,12 @@ window.JeopardyData = {
         },
         {
           value: 500,
-          clue: "Explain how a team turns weak signals into a solution that protects consumers.",
-          response: "Collect evidence, find patterns, rank risk, assign owners, target controls, and verify effectiveness.",
-          hostAccepts: "Correct answers should include at least four of these: collect evidence, identify patterns, rank risk, assign owners, apply targeted controls, verify effectiveness, and escalate when needed.",
-          why: "The solution is strongest when evidence guides action and the team confirms the risk actually went down.",
+          clue: "A weekly review shows three weak signals: a complaint uptick, late supplier documents, and sanitation verification drifts. Name the sequence that turns those signals into an action decision.",
+          response: "Confirm the data, group related signals, assess severity, likelihood, exposure, and uncertainty, decide whether containment or escalation is needed, then assign action and verify follow-up.",
+          hostAccepts: "Correct answers should include at least four of these: confirm data quality, group or trend related signals, rank risk using severity/likelihood/exposure/uncertainty, decide containment or escalation, assign an owner, target action, and verify follow-up.",
+          why: "Weak signals become useful when teams convert scattered data into a ranked decision path before choosing the action.",
           tag: "Targeted Action",
-          bridge: "This is the World Health Organization (WHO) 2026 theme in practice: burden signals become targeted, verified solutions.",
+          bridge: "This is the WHO/FAO World Food Safety Day 2026 theme in practice: burden signals become targeted, verified solutions.",
           riskCard: { signal: "Weak signals across data sources", risk: "Unranked burden grows", action: "Analyze, prioritize, assign, control, and verify" }
         }
       ]
@@ -256,7 +256,7 @@ window.JeopardyData = {
         {
           value: 400,
           clue: "Myth or Fact: A label, storage instruction, or consumer-use statement can be a food safety control.",
-          response: "Fact.",
+          response: "Fact: labels, storage instructions, allergen statements, and consumer-use directions can support safe decisions and may function as food safety controls.",
           hostAccepts: "Accept Fact or True. Strong answers connect the label or instruction to safe storage, preparation, use, allergens, or consumer decision-making.",
           why: "Clear consumer-facing information can support safe storage, preparation, use, and trust.",
           tag: "Trust",
@@ -286,7 +286,7 @@ window.JeopardyData = {
           value: 100,
           clue: "Fill in the official 2026 theme: 'From burden to solutions – safe food ________.'",
           response: "Everywhere.",
-          hostAccepts: "Accept everywhere, across the chain, across all locations, or equivalent wording that conveys safe food beyond one site or one team.",
+          hostAccepts: "Accept everywhere for full credit. If a team says across the chain, across all locations, or equivalent wording, prompt once for the official theme word.",
           why: "The theme reminds teams that safe food depends on practical prevention across the food chain.",
           tag: "Prevention",
           bridge: "The promise is not one site or one team; it is safe food everywhere.",
@@ -295,8 +295,8 @@ window.JeopardyData = {
         {
           value: 200,
           clue: "The 2026 campaign lens says targeted food safety solutions should be guided by burden/risk information and scientific evidence. Name the two guideposts.",
-          response: "Data and science, or evidence.",
-          hostAccepts: "Accept data, science, evidence, burden data, risk data, surveillance data, or evidence-based insight.",
+          response: "Burden or risk data and scientific evidence.",
+          hostAccepts: "Correct answers should include both a data term, such as burden data, risk data, surveillance data, or trend data, and a science/evidence term, such as scientific evidence or evidence-based insight.",
           why: "Data and science help teams focus on the highest risks instead of guessing where to act.",
           tag: "Data",
           bridge: "Evidence helps transform burden into focused, cost-effective action.",

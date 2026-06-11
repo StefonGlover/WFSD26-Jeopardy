@@ -4,14 +4,21 @@ import { readFileSync } from "node:fs";
 const GAME_STATE_STORAGE_KEY = "wfsd-jeopardy-game-state-v1";
 const DATA_SCRIPT = readFileSync(new URL("../jeopardy-data.js", import.meta.url), "utf8");
 const TARGET_VIEWPORTS = [
+  { width: 320, height: 568 },
+  { width: 360, height: 640 },
   { width: 390, height: 844 },
   { width: 430, height: 932 },
+  { width: 540, height: 720 },
   { width: 768, height: 1024 },
+  { width: 820, height: 1180 },
+  { width: 1024, height: 768 },
   { width: 1075, height: 908 },
   { width: 1280, height: 720 },
   { width: 1366, height: 768 },
   { width: 1440, height: 900 },
-  { width: 1920, height: 1080 }
+  { width: 1536, height: 864 },
+  { width: 1920, height: 1080 },
+  { width: 2560, height: 1440 }
 ];
 
 async function expectNoPageOverflow(page) {
@@ -145,6 +152,32 @@ test("sound toggle falls back to generated audio when Web Audio is unavailable",
   expect(stats.played).toBe(1);
 });
 
+test("presentation mode matches the MicroBootcamp host chrome", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=presentation-mode");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  const presentationButton = page.getByRole("button", { name: "Enter presentation mode" });
+  await expect(presentationButton).toBeVisible();
+  await expect(presentationButton).toHaveText("Present");
+  await expect(presentationButton).toHaveAttribute("aria-pressed", "false");
+
+  await presentationButton.click();
+  await expect(page.locator("body")).toHaveClass(/presentation-mode/);
+  await expect(page.getByRole("button", { name: "Exit presentation mode" })).toHaveText("Exit");
+  await expect(page.locator("#rulesButton")).toBeHidden();
+  await expect(page.locator("#setupButton")).toBeHidden();
+  await expect(page.locator("#resetButton")).toBeHidden();
+  await expect(page.locator(".quick-start-button")).toBeHidden();
+  await expect(page.locator("#undoButton")).toBeHidden();
+
+  await page.getByRole("button", { name: "Exit presentation mode" }).click();
+  await expect(page.locator("body")).not.toHaveClass(/presentation-mode/);
+  await expect(page.getByRole("button", { name: "Enter presentation mode" })).toHaveText("Present");
+  const savedState = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey)), GAME_STATE_STORAGE_KEY);
+  expect(savedState.presentationMode).toBe(false);
+});
+
 test("team cards clearly show and change the active team", async ({ page }) => {
   await page.goto("/jeopardy-game.html?test=active-team-badge");
   await page.evaluate(() => localStorage.clear());
@@ -190,10 +223,33 @@ test("content guardrails and clue point values remain stable", async ({ page }) 
   expect(text).toContain("Keep examples generic and non-confidential");
   expect(text).toContain("do not change point values during play");
   expect(text).toContain("Certificate of Analysis (COA)");
-  expect(text).toContain("World Health Organization (WHO)");
+  expect(text).toContain("WHO/FAO World Food Safety Day 2026 theme");
   expect(text).toContain("Quality and Food Safety:");
   expect(text).not.toContain("customer/consumer");
   expect(text).not.toContain("required food-safety document");
+});
+
+test("every board clue opens, reveals its response, and closes cleanly", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=all-clues");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  const clues = await page.evaluate(() => window.JeopardyData.categories.flatMap((category) => (
+    category.clues.map((clue) => ({
+      category: category.name,
+      value: clue.value,
+      clue: clue.clue,
+      response: clue.response
+    }))
+  )));
+
+  for (const [index, clue] of clues.entries()) {
+    await page.getByRole("button", { name: `${clue.category} for ${clue.value} points` }).click();
+    await expect(page.locator("#clueText")).toHaveText(clue.clue);
+    await page.getByRole("button", { name: "Reveal Response" }).click();
+    await expect(page.locator("#responseText")).toHaveText(clue.response);
+    await page.getByRole("button", { name: "No Score / Close" }).click();
+    await expect(page.locator("#progressStatus")).toHaveText(`${index + 1}/25 clues`);
+  }
 });
 
 test("jeopardy clue can reveal, no-score, and undo", async ({ page }) => {
@@ -283,6 +339,40 @@ test("correct auto-close undo returns to board", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Team 1 $0" })).toBeVisible();
 });
 
+test("keyboard undo does not affect unrelated previous play while a clue is live", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=live-clue-undo-scope");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "Food Safety Basics for 100 points" }).click();
+  await page.getByRole("button", { name: "Reveal Response" }).click();
+  await page.getByRole("button", { name: "Correct +100" }).click();
+  await page.getByRole("button", { name: "Food Safety Basics for 200 points" }).click();
+  await page.getByRole("button", { name: "Reveal Response" }).click();
+
+  await page.keyboard.press("u");
+  await expect(page.locator("#clueDialog")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Team 1 $100" })).toBeVisible();
+  await expect(page.locator("#progressStatus")).toHaveText("1/25 clues");
+  await page.getByRole("button", { name: "No Score / Close" }).click();
+});
+
+test("team renames survive later score undo", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=rename-undo-rebase");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "Food Safety Basics for 100 points" }).click();
+  await page.getByRole("button", { name: "Reveal Response" }).click();
+  await page.getByRole("button", { name: "Correct +100" }).click();
+  await page.getByRole("button", { name: "Teams" }).click();
+  await page.locator("#teamFields input").first().fill("QA Crew");
+  await page.getByRole("button", { name: "Save Teams" }).click();
+  await expect(page.getByRole("button", { name: "QA Crew $100" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByRole("button", { name: "QA Crew $0" })).toBeVisible();
+  await expect(page.getByText("Team 1 $0")).toHaveCount(0);
+});
+
 test("host note updates after clue reveal", async ({ page }) => {
   await page.goto("/jeopardy-game.html?test=host-note");
   await page.evaluate(() => localStorage.clear());
@@ -365,6 +455,29 @@ test("final zero wagers auto-review and show results without extra click", async
   expect(savedState.finalResults.map((result) => result.label)).toEqual(["Auto-reviewed", "Auto-reviewed", "Auto-reviewed"]);
 });
 
+test("final undo is scoped to Final Jeopardy steps", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=final-undo-scope");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "Food Safety Basics for 100 points" }).click();
+  await page.getByRole("button", { name: "Reveal Response" }).click();
+  await page.getByRole("button", { name: "Correct +100" }).click();
+  await page.getByRole("button", { name: "Final Jeopardy" }).click();
+  await expect(page.getByRole("button", { name: "Undo Final Step" })).toBeDisabled();
+
+  await page.keyboard.press("u");
+  await expect(page.getByRole("button", { name: "Team 1 $100" })).toBeVisible();
+  await expect(page.locator("#progressStatus")).toHaveText("1/25 clues");
+  await expect(page.locator("#finalDialog")).toBeVisible();
+
+  await page.getByRole("button", { name: "Reveal Final Clue" }).click();
+  await expect(page.getByRole("button", { name: "Undo Final Step" })).toBeEnabled();
+  await page.getByRole("button", { name: "Undo Final Step" }).click();
+  await expect(page.getByLabel("Team 1 wager")).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Team 1 $100" })).toBeVisible();
+  await expect(page.locator("#progressStatus")).toHaveText("1/25 clues");
+});
+
 test("final guided scoring supports half credit and hides early results", async ({ page }) => {
   await page.goto("/jeopardy-game.html?test=final-guided");
   await page.evaluate(() => localStorage.clear());
@@ -392,6 +505,28 @@ test("final guided scoring supports half credit and hides early results", async 
   await page.getByRole("button", { name: "Half +50" }).click();
   await expect(page.getByRole("heading", { name: /Winner/ })).toBeVisible();
   await expect(page.getByRole("dialog", { name: /Winner/ }).getByText("$150")).toBeVisible();
+});
+
+test("final wagers are sanitized to integer scores", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=final-decimal-wager");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "Food Safety Basics for 100 points" }).click();
+  await page.getByRole("button", { name: "Reveal Response" }).click();
+  await page.getByRole("button", { name: "Correct +100" }).click();
+  await page.getByRole("button", { name: "Final Jeopardy" }).click();
+  await page.getByLabel("Team 1 wager").fill("50.5");
+  await expect(page.getByLabel("Team 1 wager")).toHaveValue("50");
+  await page.getByRole("button", { name: "Reveal Final Clue" }).click();
+  await page.getByRole("button", { name: "Reveal Final Response" }).click();
+  await page.getByRole("button", { name: "Full +50" }).click();
+  await expect(page.getByRole("heading", { name: /Winner/ })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: /Winner/ }).getByText("$150")).toBeVisible();
+  await expect(page.getByText("$150.5")).toHaveCount(0);
+  const savedState = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey)), GAME_STATE_STORAGE_KEY);
+  expect(savedState.teams[0].score).toBe(150);
+  expect(savedState.finalWagers[0]).toBe(50);
+  expect(savedState.finalResults[0]).toMatchObject({ label: "Full", delta: 50 });
 });
 
 test("legacy final restore preserves locked wagers and derives completion", async ({ page }) => {
@@ -493,6 +628,43 @@ test("tampered finalComplete cannot bypass final scoring", async ({ page }) => {
   expect(savedState.finalComplete).toBe(false);
 });
 
+test("malformed completed Final restore requires valid nonzero wager results", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=missing-final-results");
+  await page.evaluate((storageKey) => {
+    localStorage.clear();
+    localStorage.setItem(storageKey, JSON.stringify({
+      version: 1,
+      teams: [
+        { name: "Team 1", score: 100 },
+        { name: "Team 2", score: 100 }
+      ],
+      activeTeam: 0,
+      usedClues: [],
+      seenCategoryPrompts: [],
+      actionHistory: [],
+      finalWagers: [100, 100],
+      finalStartingScores: [100, 100],
+      finalWagersLocked: true,
+      finalResponseRevealed: true,
+      finalScoredTeams: [0, 1],
+      finalResults: [],
+      finalComplete: false,
+      mobileCategoryIndex: 0,
+      currentClue: null,
+      openDialog: "final"
+    }));
+  }, GAME_STATE_STORAGE_KEY);
+  await page.reload();
+  await page.getByRole("button", { name: "Resume Game" }).click();
+  await expect(page.getByRole("heading", { name: /Winner/ })).toHaveCount(0);
+  await expect(page.locator("#finalDialog")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Full +100" })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Miss -100" })).toHaveCount(2);
+  const savedState = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey)), GAME_STATE_STORAGE_KEY);
+  expect(savedState.finalComplete).toBe(false);
+  expect(savedState.finalScoredTeams).toEqual([]);
+});
+
 test("final score controls stay visible across compact viewports", async ({ page }) => {
   const finalViewports = [
     { width: 390, height: 844 },
@@ -556,6 +728,41 @@ test("mobile revealed clue starts with host details collapsed", async ({ page })
   await expect(page.locator("#clueHostDetails")).not.toBeVisible();
   await page.getByRole("button", { name: "Host Details" }).click();
   await expect(page.locator("#clueHostDetails")).toBeVisible();
+});
+
+test("compact phone clue controls stay visible after response reveal", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.goto("/jeopardy-game.html?test=compact-clue-controls");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "Food Safety Basics for 100 points" }).click();
+  await page.getByRole("button", { name: "Reveal Response" }).click();
+  await expectVisibleInViewport(page, page.getByRole("button", { name: "Correct +100" }));
+  await expectVisibleInViewport(page, page.getByRole("button", { name: "Incorrect -100" }));
+  await expectVisibleInViewport(page, page.getByRole("button", { name: "No Score / Close" }));
+  const hostDetailsBox = await page.getByRole("button", { name: "Host Details" }).boundingBox();
+  expect(hostDetailsBox).not.toBeNull();
+  expect(hostDetailsBox.height).toBeGreaterThanOrEqual(44);
+  await expectNoPageOverflow(page);
+});
+
+test("compact phone setup and rules actions remain reachable", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 640 });
+  await page.goto("/jeopardy-game.html?test=compact-setup-rules");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "Teams" }).click();
+  await page.getByRole("button", { name: "Add Team" }).click();
+  await page.getByRole("button", { name: "Add Team" }).click();
+  await expect(page.locator("#teamFields label")).toHaveCount(5);
+  await expectVisibleInViewport(page, page.getByRole("button", { name: "Save Teams" }));
+  await page.getByRole("button", { name: "Close Team Setup" }).click();
+
+  await page.getByRole("button", { name: "Show rules" }).click();
+  const lastRule = page.getByText("Use Final Jeopardy to close with one shared promise");
+  await lastRule.scrollIntoViewIfNeeded();
+  await expect(lastRule).toBeVisible();
+  await expectNoPageOverflow(page);
 });
 
 test("early Final Jeopardy opens directly without a confirmation detour", async ({ page }) => {
@@ -719,6 +926,10 @@ test("legacy final scoring restore sanitizes stale team indexes", async ({ page 
       finalWagersLocked: true,
       finalResponseRevealed: true,
       finalScoredTeams: [0, 1, 2],
+      finalResults: [
+        { result: "correct", label: "Full", delta: 100 },
+        { result: "incorrect", label: "Miss", delta: -100 }
+      ],
       finalComplete: false,
       mobileCategoryIndex: 0,
       currentClue: null,
@@ -777,7 +988,7 @@ test("game layout avoids horizontal overflow at core viewports", async ({ page }
     await expect(page.getByRole("heading", { name: "Food Safety Face-Off" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Final Jeopardy" })).toBeVisible();
     await expectNoPageOverflow(page);
-    if (viewport.width === 390) {
+    if (viewport.width <= 430) {
       const mobileBoardTop = await page.locator("#mobileBoard").evaluate((element) => element.getBoundingClientRect().top);
       expect(mobileBoardTop).toBeLessThan(viewport.height);
     }
@@ -786,10 +997,14 @@ test("game layout avoids horizontal overflow at core viewports", async ({ page }
 
 test("primary dialogs remain usable across target viewport families", async ({ page }) => {
   const viewports = [
+    { width: 320, height: 568 },
+    { width: 360, height: 640 },
     { width: 390, height: 844 },
     { width: 768, height: 1024 },
+    { width: 1024, height: 768 },
     { width: 1280, height: 720 },
-    { width: 1920, height: 1080 }
+    { width: 1920, height: 1080 },
+    { width: 2560, height: 1440 }
   ];
 
   for (const viewport of viewports) {
@@ -831,6 +1046,8 @@ test("keyboard navigation reaches controls, traps dialogs, and restores focus", 
   await page.evaluate(() => localStorage.clear());
   await page.reload();
 
+  await page.keyboard.press("Tab");
+  await expect(page.getByRole("button", { name: "Enter presentation mode" })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("button", { name: "Show rules" })).toBeFocused();
   await page.keyboard.press("Tab");

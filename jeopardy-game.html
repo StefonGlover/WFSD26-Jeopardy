@@ -5,9 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Food Safety Face-Off</title>
     <link rel="icon" href="assets/generated/coca-cola-logo.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="jeopardy-game.css?v=487910ef8a">
+    <link rel="stylesheet" href="jeopardy-game.css?v=7e130e0a97">
   </head>
   <body>
+    <div class="stage-lights" aria-hidden="true"></div>
     <main class="game-shell">
       <header class="game-header">
         <div class="brand-lockup logo-lockup" aria-label="Coca-Cola">
@@ -19,6 +20,7 @@
           <p id="gameTheme">From burden to solutions – safe food everywhere</p>
         </div>
         <div class="header-actions">
+          <button class="text-button presentation-toggle" type="button" id="presentationButton" title="Enter presentation mode" aria-label="Enter presentation mode" aria-pressed="false">Present</button>
           <button class="icon-button" type="button" id="rulesButton" title="Show rules" aria-label="Show rules">?</button>
           <button class="text-button sound-toggle muted" type="button" id="soundButton" title="Turn sound on" aria-label="Sound is off. Turn sound on." aria-pressed="false">Sound Off</button>
           <button class="text-button" type="button" id="setupButton">Teams</button>
@@ -244,10 +246,10 @@
       </section>
     </dialog>
 
-    <script src="jeopardy-data.js?v=44184c0374"></script>
-    <script src="state-utils.js?v=f7b79de62c"></script>
+    <script src="jeopardy-data.js?v=fa789cee45"></script>
+    <script src="state-utils.js?v=81e4ece96d"></script>
     <script src="jeopardy-sound.js?v=bf4ef04a83"></script>
     <script src="jeopardy-dialogs.js?v=20d83550f6"></script>
-    <script src="jeopardy-game.js?v=8535897dfb"></script>
+    <script src="jeopardy-game.js?v=c95236ffcd"></script>
   </body>
 </html>
