@@ -478,6 +478,35 @@ test("final undo is scoped to Final Jeopardy steps", async ({ page }) => {
   await expect(page.locator("#progressStatus")).toHaveText("1/25 clues");
 });
 
+test("locked Final Jeopardy disables board play and preserves final undo", async ({ page }) => {
+  await page.goto("/jeopardy-game.html?test=final-board-lock");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.getByRole("button", { name: "Food Safety Basics for 100 points" }).click();
+  await page.getByRole("button", { name: "Reveal Response" }).click();
+  await page.getByRole("button", { name: "Correct +100" }).click();
+  await page.getByRole("button", { name: "Final Jeopardy" }).click();
+  await page.getByLabel("Team 1 wager").fill("100");
+  await page.getByRole("button", { name: "Reveal Final Clue" }).click();
+  await page.getByRole("button", { name: "Back to board" }).click();
+
+  await expect(page.getByRole("button", { name: "Food Safety Basics for 200 points" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Spot the Risk for 100 points" })).toBeDisabled();
+  let savedState = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey)), GAME_STATE_STORAGE_KEY);
+  expect(savedState.teams[0].score).toBe(100);
+  expect(savedState.finalStartingScores).toEqual([100, 0, 0]);
+  expect(savedState.usedClues).toEqual(["0-0"]);
+
+  await page.getByRole("button", { name: "Final Jeopardy" }).click();
+  await expect(page.getByRole("button", { name: "Undo Final Step" })).toBeEnabled();
+  await page.getByRole("button", { name: "Undo Final Step" }).click();
+  await expect(page.getByLabel("Team 1 wager")).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Food Safety Basics for 200 points" })).toBeEnabled();
+  savedState = await page.evaluate((storageKey) => JSON.parse(localStorage.getItem(storageKey)), GAME_STATE_STORAGE_KEY);
+  expect(savedState.finalWagersLocked).toBe(false);
+  expect(savedState.teams[0].score).toBe(100);
+});
+
 test("final guided scoring supports half credit and hides early results", async ({ page }) => {
   await page.goto("/jeopardy-game.html?test=final-guided");
   await page.evaluate(() => localStorage.clear());
@@ -711,6 +740,10 @@ test("revealed clue uses collapsible host details without layout overflow", asyn
   await page.getByRole("button", { name: "Hide Host Details" }).click();
   await expect(page.locator("#clueHostDetails")).not.toBeVisible();
   await expect(page.getByRole("button", { name: "Host Details" })).toBeVisible();
+  const responseLabelColor = await page.locator("#clueDialog .audience-response .clue-label").evaluate((element) => (
+    getComputedStyle(element).color
+  ));
+  expect(responseLabelColor).toBe("rgb(130, 0, 0)");
   await page.getByRole("button", { name: "Correct +100" }).click();
   await expect(page.locator("#clueDialog")).not.toBeVisible();
   await expect(page.getByRole("button", { name: "Team 1 $100" })).toBeVisible();
@@ -991,6 +1024,7 @@ test("game layout avoids horizontal overflow at core viewports", async ({ page }
     if (viewport.width <= 430) {
       const mobileBoardTop = await page.locator("#mobileBoard").evaluate((element) => element.getBoundingClientRect().top);
       expect(mobileBoardTop).toBeLessThan(viewport.height);
+      await expectVisibleInViewport(page, page.getByRole("button", { name: "Final Jeopardy" }));
     }
   }
 });
