@@ -1105,7 +1105,7 @@ function renderBoard() {
       tile.type = "button";
       tile.className = `clue-tile${state.usedClues.has(id) ? " used" : ""}`;
       tile.textContent = clue.value;
-      tile.disabled = state.usedClues.has(id) || state.finalComplete;
+      tile.disabled = state.usedClues.has(id) || finalBoardPlayLocked();
       tile.dataset.categoryIndex = String(categoryIndex);
       tile.dataset.clueIndex = String(clueIndex);
       tile.style.setProperty("--category-accent", category.visual?.color || "var(--coke-red)");
@@ -1152,7 +1152,7 @@ function renderMobileBoard() {
     const tile = document.createElement("button");
     tile.type = "button";
     tile.className = `mobile-clue-tile${state.usedClues.has(id) ? " used" : ""}`;
-    tile.disabled = state.usedClues.has(id) || state.finalComplete;
+    tile.disabled = state.usedClues.has(id) || finalBoardPlayLocked();
     tile.dataset.categoryIndex = String(state.mobileCategoryIndex);
     tile.dataset.clueIndex = String(clueIndex);
     tile.append(
@@ -1213,6 +1213,10 @@ function readSetupDraftTeams() {
 }
 
 function finalTeamStructureLocked() {
+  return Boolean(state.finalWagersLocked || state.finalResponseRevealed || state.finalComplete);
+}
+
+function finalBoardPlayLocked() {
   return Boolean(state.finalWagersLocked || state.finalResponseRevealed || state.finalComplete);
 }
 
@@ -1300,7 +1304,7 @@ function renderCurrentClueView() {
 }
 
 function openClue(categoryIndex, itemIndex) {
-  if (state.finalComplete) return;
+  if (finalBoardPlayLocked()) return;
   playSound("tile");
   const category = gameData.categories[categoryIndex];
   const clue = category.clues[itemIndex];
@@ -1332,6 +1336,7 @@ function openClue(categoryIndex, itemIndex) {
 }
 
 function revealClue() {
+  if (finalBoardPlayLocked()) return;
   playSound("reveal");
   responseBlock.hidden = false;
   state.currentClue.revealed = true;
@@ -1375,7 +1380,7 @@ function getNextUnscoredTeamIndex(startIndex) {
 }
 
 function applyScore(multiplier) {
-  if (!state.currentClue) return;
+  if (!state.currentClue || finalBoardPlayLocked()) return;
   const teamIndex = sanitizeTeamIndex(modalTeamSelect.value, state.currentClue.selectedTeam);
   state.currentClue.selectedTeam = teamIndex;
   const wasStealAttempt = Boolean(state.currentClue.stealOpen);
@@ -1445,7 +1450,7 @@ function applyScore(multiplier) {
 }
 
 function noScore() {
-  if (!state.currentClue) return;
+  if (!state.currentClue || finalBoardPlayLocked()) return;
   const label = `${state.currentClue.category.name} ${state.currentClue.clue.value} closed`;
   const closingSteal = state.currentClue.stealOpen && !state.currentClue.resolved && state.currentClue.scoredTeams.size > 0;
   if (closingSteal) {
@@ -1744,6 +1749,7 @@ function lockFinalWagers() {
   state.finalStartingScores = state.teams.map((team) => Math.max(0, team.score));
   normalizeFinalWagers();
   state.finalWagersLocked = true;
+  renderBoard();
   renderFinalPrompt();
   renderWagers();
   renderFinalStage();
