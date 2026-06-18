@@ -33,7 +33,7 @@ window.JeopardyData = {
   rules: [
     "Build 2-5 cross-functional teams and choose one active team before each clue.",
     "Follow the progress meter from burden signals to safe food everywhere as clues are played.",
-    "Pick a category and point value. The first clue in each category gives the host a quick theme stinger.",
+    "Pick a category and point value. The first clue in each category gives the host a quick Category Lens.",
     "Reveal the response, connect it to the theme lens and burden-to-solution teaching point, then score the team.",
     "After a miss, the host may select another team and allow one steal.",
     "Use Final Jeopardy to close with one shared promise: protect consumers through coordinated action."
@@ -80,7 +80,7 @@ window.JeopardyData = {
           value: 400,
           clue: "A product question comes in and the team needs source, lot or batch, destination, and status information before deciding what to hold or release. What capability is this?",
           response: "Traceability with actionable source, movement, destination, and status records.",
-          hostAccepts: "Accept traceability or track and trace when the answer includes at least two usable decision inputs such as source, lot or batch, destination, status, quantity, hold/release decision, or disposition.",
+          hostAccepts: "Accept traceability or track and trace. Strong answers may add usable decision inputs such as source, lot or batch, destination, status, quantity, hold/release decision, or disposition.",
           why: "Traceability is strongest when records do more than name a capability; they support faster holds, investigations, withdrawals, and disposition decisions.",
           tag: "Traceability",
           bridge: "Traceability moves potential burden into a focused, controlled response.",
@@ -107,7 +107,7 @@ window.JeopardyData = {
       clues: [
         {
           value: 100,
-          clue: "A handwash station near a production, lab, or sample area is out of soap and towels. What is the food safety concern?",
+          clue: "A handwashing station near a production area, lab, or sample area is out of soap and towels. What is the food safety concern?",
           response: "Poor hand hygiene and contamination risk.",
           hostAccepts: "Accept hand hygiene breakdown, people contamination risk, cross-contamination, or failure to support hygienic practices.",
           why: "Basic hygiene resources help prevent people from carrying contamination into shared food or beverage spaces.",
@@ -127,7 +127,7 @@ window.JeopardyData = {
         },
         {
           value: 300,
-          clue: "An urgent shipment arrives with an expired supplier approval, Certificate of Analysis (COA), specification, or required food safety document. What should happen before use?",
+          clue: "An urgent shipment arrives with missing, expired, outdated, or otherwise invalid supplier approval, Certificate of Analysis (COA), specification, or required food safety documentation. What should happen before use?",
           response: "Hold or block use, verify requirements, obtain current approval/documentation, and escalate.",
           hostAccepts: "Correct answers should include blocking/holding use plus verification or escalation. Prompt if the answer skips the hold/block step.",
           why: "Urgency should not override evidence that a supplier, material, or package is approved for use.",
@@ -245,7 +245,7 @@ window.JeopardyData = {
         },
         {
           value: 300,
-          clue: "Myth or Fact: No complaints means no food safety risk exists.",
+          clue: "Myth or Fact, and why: No complaints means no food safety risk exists.",
           response: "Myth.",
           hostAccepts: "Accept Myth plus an explanation that absence of complaints is not proof of control; leading indicators, verification, and preventive controls still matter.",
           why: "Absence of complaints is not proof of safety; proactive controls and leading indicators still matter.",
@@ -304,9 +304,9 @@ window.JeopardyData = {
         },
         {
           value: 300,
-          clue: "Before choosing a fix for a recurring issue, teams should first understand this.",
+          clue: "Before choosing a fix for a recurring issue, teams should first understand these three things.",
           response: "The pattern, root cause, and risk level.",
-          hostAccepts: "Accept root cause, pattern/trend, risk level, why it keeps happening, or evidence needed to choose the right fix.",
+          hostAccepts: "Correct answers should include the pattern or trend, the likely root cause, and the risk level. Prompt if the answer names only one of the three.",
           why: "A better understanding of recurrence helps teams choose a solution that fits the real problem.",
           tag: "Targeted Action",
           bridge: "Good solutions start with understanding the pattern behind the burden.",
@@ -314,7 +314,7 @@ window.JeopardyData = {
         },
         {
           value: 400,
-          clue: "Turn this burden into a solution: allergen or milk-containing product change information is not consistently reaching label and change-control reviewers.",
+          clue: "Turn this burden into a solution: allergen-related product change information, such as a new milk-containing ingredient, is not consistently reaching label and change-control reviewers.",
           response: "Build clear ownership, change-control triggers, label review, cross-functional approval, and effectiveness checks.",
           hostAccepts: "Correct answers should include ownership plus a prevention mechanism such as label review, change-control trigger, cross-functional approval, allergen assessment, training, or effectiveness verification.",
           why: "A solution should prevent label and allergen communication gaps, not only correct one missed review.",
@@ -339,7 +339,7 @@ window.JeopardyData = {
     category: "One Team, One Promise",
     clue: "A potential product safety issue has been identified. Name five function groups that may need to work together and explain what each contributes to protecting consumers.",
     response: "Strong responses may include: Quality and Food Safety: assess risk, guide holds, and decide product disposition. Supply Chain and Operations: trace product, manage inventory, and execute holds or withdrawals. Legal and Regulatory: confirm obligations, reporting expectations, and documentation. Communications, Customer Teams, and Consumer Affairs: align clear customer, consumer, and stakeholder messaging and complaint intake. Data and Information Technology (IT): provide complaint trends, records, reporting, and system access. Finance and Leadership: resource urgent action, make timely decisions, and assign accountability.",
-    hostAccepts: "Score as correct when the team names at least five relevant functions or function groups and gives a consumer-protection contribution for each. Prompt once if they name functions but do not explain contributions. Use the rubric as guidance; the host's call is final for reasonable equivalents.",
+    hostAccepts: "Score as correct when the team names at least five relevant functions or function groups and gives a consumer-protection contribution for each. Grouped examples count as one function group unless the team clearly explains distinct roles. Prompt once if they name functions but do not explain contributions. Use the rubric as guidance; the host's call is final for reasonable equivalents.",
     rubric: [
       { label: "Full wager", text: "Five or more relevant functions or function groups plus a clear consumer-protection contribution for each." },
       { label: "Half wager", text: "Three or four relevant functions or function groups with mostly clear contributions, or five functions with thin contribution detail." },

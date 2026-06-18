@@ -245,7 +245,10 @@ function serializeState({ includeTransient = false, includeUndo = true } = {}) {
   const totalTeams = state.teams.length;
   return {
     version: 1,
-    teams: state.teams.map((team) => ({ name: team.name, score: team.score })),
+    teams: state.teams.map((team) => ({
+      name: team.name,
+      score: clampNumber(team.score, -SCORE_LIMIT, SCORE_LIMIT)
+    })),
     activeTeam: state.activeTeam,
     usedClues: [...state.usedClues],
     seenCategoryPrompts: [...state.seenCategoryPrompts],
@@ -260,7 +263,7 @@ function serializeState({ includeTransient = false, includeUndo = true } = {}) {
     finalResults: Array.from({ length: totalTeams }, (_, index) => sanitizeFinalResult(state.finalResults[index])),
     finalComplete: state.finalComplete,
     mobileCategoryIndex: state.mobileCategoryIndex,
-    presentationMode: state.presentationMode,
+    presentationMode: false,
     currentClue: includeTransient ? serializeCurrentClue() : null,
     openDialog: includeTransient ? getOpenDialogName() : null,
     undoSnapshot: includeUndo && state.undoSnapshot
@@ -378,9 +381,13 @@ function restoreState(snapshot, { reopenDialogs = false } = {}) {
     Math.max(0, Number(snapshot.mobileCategoryIndex) || 0),
     gameData.categories.length - 1
   );
-  state.presentationMode = Boolean(snapshot.presentationMode);
+  state.presentationMode = false;
   state.undoSnapshot = sanitizeUndoSnapshot(snapshot.undoSnapshot);
-  restoreCurrentClue(snapshot.currentClue);
+  if (finalBoardPlayLocked()) {
+    state.currentClue = null;
+  } else {
+    restoreCurrentClue(snapshot.currentClue);
+  }
   renderState();
   if (reopenDialogs) {
     restoreOpenDialog(snapshot.openDialog);
@@ -590,7 +597,7 @@ async function closeClueFromHost() {
     const confirmed = await confirmAction({
       title: "Close This Clue?",
       message: "The response has been revealed. Closing now will mark this clue as No Score.",
-      confirmLabel: "Close As No Score",
+      confirmLabel: "Close Without Score",
       variant: "danger"
     });
     if (!confirmed) return;
@@ -645,6 +652,15 @@ function formatScore(score) {
 
 function formatDelta(delta) {
   return delta > 0 ? `+${delta}` : `${delta}`;
+}
+
+function adjustTeamScore(teamIndex, delta) {
+  const team = state.teams[teamIndex];
+  if (!team) return 0;
+  const before = clampNumber(team.score, -SCORE_LIMIT, SCORE_LIMIT);
+  const after = clampNumber(before + delta, -SCORE_LIMIT, SCORE_LIMIT);
+  team.score = after;
+  return after - before;
 }
 
 function renderGlossary(strip, item) {
@@ -1043,6 +1059,7 @@ function renderScoreboard() {
     card.type = "button";
     card.className = `team-card${index === state.activeTeam ? " active" : ""}`;
     card.setAttribute("aria-pressed", index === state.activeTeam ? "true" : "false");
+    card.setAttribute("aria-label", `${team.name} ${formatScore(team.score)}. Set active scoring team.`);
     const name = document.createElement("span");
     name.textContent = team.name;
     const score = document.createElement("strong");
@@ -1399,7 +1416,7 @@ function applyScore(multiplier) {
   } else if (wasStealAttempt) {
     relabelUndo(`${state.currentClue.category.name} ${state.currentClue.clue.value} scoring`);
   }
-  team.score += value * multiplier;
+  const appliedDelta = adjustTeamScore(teamIndex, delta);
   state.currentClue.scoredTeams.add(teamIndex);
   markCurrentUsed();
   if (multiplier > 0) {
@@ -1424,20 +1441,20 @@ function applyScore(multiplier) {
   }
   updateScoreButtons();
   if (multiplier > 0) {
-    hostNote.textContent = `${team.name} earned ${value} points. This clue is closed.`;
+    hostNote.textContent = `${team.name} earned ${Math.abs(appliedDelta)} points. This clue is closed.`;
   } else if (state.currentClue.resolved) {
-    hostNote.textContent = `${team.name} lost ${value} points. The steal attempt is complete and this clue is closed.`;
+    hostNote.textContent = `${team.name} lost ${Math.abs(appliedDelta)} points. The steal attempt is complete and this clue is closed.`;
   } else {
-    hostNote.textContent = `${team.name} lost ${value} points. Steal available: score the selected team, choose another team, or use Close Clue.`;
+    hostNote.textContent = `${team.name} lost ${Math.abs(appliedDelta)} points. Steal available: score the selected team, choose another team, or use Close Without Score.`;
   }
   recordHistory({
     title: `${state.currentClue.category.name} ${state.currentClue.clue.value}`,
-    detail: `${team.name} ${formatDelta(delta)}`,
-    delta,
+    detail: `${team.name} ${formatDelta(appliedDelta)}`,
+    delta: appliedDelta,
     type: multiplier > 0 ? "positive" : "negative"
   });
   updateBoardStatus();
-  showToast(`${team.name} ${formatDelta(delta)}`, multiplier > 0 ? "positive" : "negative");
+  showToast(`${team.name} ${formatDelta(appliedDelta)}`, multiplier > 0 ? "positive" : "negative");
   if (state.currentClue.resolved) {
     closeDialog(clueDialog);
     saveState();
@@ -1495,10 +1512,11 @@ function updateScoreButtons() {
   correctButton.textContent = scoreValue ? `Correct +${scoreValue}` : "Correct +";
   incorrectButton.textContent = scoreValue ? `Incorrect -${scoreValue}` : "Incorrect -";
   revealButton.disabled = stage !== "clue";
-  correctButton.disabled = !revealed || alreadyScored || noScoreApplied || resolved;
-  incorrectButton.disabled = !revealed || alreadyScored || noScoreApplied || resolved;
-  noScoreButton.disabled = !revealed || noScoreApplied || resolved;
-  noScoreButton.textContent = stealPending ? "Close Clue" : "No Score / Close";
+  const finalLocked = finalBoardPlayLocked();
+  correctButton.disabled = finalLocked || !revealed || alreadyScored || noScoreApplied || resolved;
+  incorrectButton.disabled = finalLocked || !revealed || alreadyScored || noScoreApplied || resolved;
+  noScoreButton.disabled = finalLocked || !revealed || noScoreApplied || resolved;
+  noScoreButton.textContent = "Close Without Score";
   closeClueButton.disabled = stealPending;
   closeClueButton.classList.toggle("primary-next", resolved && !stealPending);
 }
@@ -1513,11 +1531,11 @@ function updateHostNoteForCurrentClue() {
     return;
   }
   if (stage === "steal") {
-    hostNote.textContent = "Steal available: score the selected team, choose another team, or use Close Clue to return to the board.";
+    hostNote.textContent = "Steal available: score the selected team, choose another team, or use Close Without Score to return to the board.";
     return;
   }
   if (stage === "response") {
-    hostNote.textContent = "Response revealed. Score the selected team or mark No Score to return to the board.";
+    hostNote.textContent = "Response revealed. Score the selected team or close without score to return to the board.";
     return;
   }
   hostNote.textContent = `${state.teams[state.activeTeam].name} is up. Reveal when ready, then score or close.`;
@@ -1746,7 +1764,7 @@ function normalizeFinalWagers() {
 function lockFinalWagers() {
   if (state.finalWagersLocked || state.finalResponseRevealed || state.finalComplete) return;
   captureUndo("lock Final wagers", { scope: "final" });
-  state.finalStartingScores = state.teams.map((team) => Math.max(0, team.score));
+  state.finalStartingScores = state.teams.map((team) => clampNumber(team.score, 0, SCORE_LIMIT));
   normalizeFinalWagers();
   state.finalWagersLocked = true;
   renderBoard();
@@ -1856,12 +1874,12 @@ function applyFinalScore(button) {
   const resultType = scoring.type;
   captureUndo(`${state.teams[teamIndex].name} Final ${formatDelta(delta)}`, { scope: "final" });
   playSound(scoring.sound);
-  state.teams[teamIndex].score += delta;
+  const appliedDelta = adjustTeamScore(teamIndex, delta);
   state.finalScoredTeams.add(teamIndex);
   state.finalResults[teamIndex] = sanitizeFinalResult({
     result,
     label: scoring.label,
-    delta
+    delta: appliedDelta
   });
   const card = button.closest(".wager-card");
   card.classList.add("scored");
@@ -1870,13 +1888,13 @@ function applyFinalScore(button) {
     item.disabled = true;
   });
   renderScoreboard();
-  if (delta !== 0) {
-    animateScore(teamIndex, delta > 0 ? 1 : -1);
+  if (appliedDelta !== 0) {
+    animateScore(teamIndex, appliedDelta > 0 ? 1 : -1);
   }
   recordHistory({
     title: "Final Jeopardy",
-    detail: `${state.teams[teamIndex].name} ${scoring.label} ${formatDelta(delta)}`,
-    delta,
+    detail: `${state.teams[teamIndex].name} ${scoring.label} ${formatDelta(appliedDelta)}`,
+    delta: appliedDelta,
     type: resultType
   });
   syncFinalZeroWagers();
@@ -1884,7 +1902,7 @@ function applyFinalScore(button) {
   renderFinalStage();
   updateFinalControls();
   updateBoardStatus();
-  showToast(`${state.teams[teamIndex].name} ${scoring.label} ${formatDelta(delta)}`, resultType);
+  showToast(`${state.teams[teamIndex].name} ${scoring.label} ${formatDelta(appliedDelta)}`, resultType);
   saveState();
   showFinalResultsWhenReady();
 }

@@ -1901,7 +1901,7 @@ dialog::backdrop {
   .game-shell {
     width: min(100vw - 18px, 1780px);
     padding-top: 9px;
-    padding-bottom: 118px;
+    padding-bottom: 154px;
   }
 
   .brand-lockup {
@@ -1974,6 +1974,10 @@ dialog::backdrop {
       rgba(0, 0, 0, 0.9);
     box-shadow: 0 16px 54px rgba(0, 0, 0, 0.42);
     backdrop-filter: blur(14px);
+  }
+
+  .mobile-clue-tile {
+    scroll-margin-bottom: 164px;
   }
 
   .footer-support,
@@ -2702,6 +2706,7 @@ body {
   .game-shell {
     width: min(100vw - 12px, 520px);
     gap: 8px;
+    padding-bottom: 148px;
   }
 
   .brand-lockup {

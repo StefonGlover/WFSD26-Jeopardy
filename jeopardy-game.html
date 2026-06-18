@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Food Safety Face-Off</title>
     <link rel="icon" href="assets/generated/coca-cola-logo.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="jeopardy-game.css?v=d27c6fbabf">
+    <link rel="stylesheet" href="jeopardy-game.css?v=203af41e63">
   </head>
   <body>
     <div class="stage-lights" aria-hidden="true"></div>
     <main class="game-shell">
       <header class="game-header">
-        <div class="brand-lockup logo-lockup" aria-label="Coca-Cola">
+        <div class="brand-lockup logo-lockup">
           <img class="brand-logo-image" src="assets/generated/coca-cola-logo.svg" alt="Coca-Cola">
         </div>
         <div class="title-block">
@@ -127,7 +127,7 @@
           <button class="primary-button" type="button" id="revealButton" data-control="reveal">Reveal Response</button>
           <button class="score-button positive" type="button" id="correctButton" data-control="score" disabled>Correct +</button>
           <button class="score-button negative" type="button" id="incorrectButton" data-control="score" disabled>Incorrect -</button>
-          <button class="text-button" type="button" id="noScoreButton" data-control="close" disabled>No Score / Close</button>
+          <button class="text-button" type="button" id="noScoreButton" data-control="close" disabled>Close Without Score</button>
         </div>
         <p class="host-note" id="hostNote" aria-live="polite" aria-atomic="true">Reveal when ready. Score the selected team or close the clue with no score.</p>
       </section>
@@ -177,7 +177,7 @@
               </div>
             </div>
           </div>
-          <p class="final-wager-helper" id="finalWagerHelper">Revealing locks wagers.</p>
+          <p class="final-wager-helper" id="finalWagerHelper">Revealing the final clue locks wagers and team count.</p>
           <div class="wager-grid" id="wagerGrid"></div>
         </div>
         <div class="host-controls final-controls">
@@ -246,10 +246,10 @@
       </section>
     </dialog>
 
-    <script src="jeopardy-data.js?v=fa789cee45"></script>
+    <script src="jeopardy-data.js?v=cb03f082cd"></script>
     <script src="state-utils.js?v=81e4ece96d"></script>
     <script src="jeopardy-sound.js?v=bf4ef04a83"></script>
     <script src="jeopardy-dialogs.js?v=20d83550f6"></script>
-    <script src="jeopardy-game.js?v=9adedacf65"></script>
+    <script src="jeopardy-game.js?v=73ce2db6af"></script>
   </body>
 </html>

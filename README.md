@@ -4,13 +4,13 @@ This folder contains the host-led World Food Safety Day Jeopardy game and printa
 
 ## Start Here
 
-Run a small local server from this folder:
+Run the included local server from this folder:
 
 ```bash
-python3 -m http.server 8765
+npm run serve
 ```
 
-Then open `http://127.0.0.1:8765/index.html`. The root page redirects directly to `jeopardy-game.html`.
+Then open `http://127.0.0.1:4178/index.html`. The root page redirects directly to `jeopardy-game.html`.
 
 ## Core Files
 
